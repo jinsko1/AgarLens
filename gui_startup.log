@@ -1,0 +1,490 @@
+Starting Swim Diameter Analyzer with /usr/local/bin/python3
+Starting Swim Diameter Analyzer with /usr/local/bin/python3
+Tk root created
+Building GUI
+Starting Swim Diameter Analyzer with /usr/local/bin/python3
+Tk root created
+Building GUI
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 43
+  - SUCCESS: Max Diameter: 2.21 cm, Min Diameter: 2.13 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 43
+  - SUCCESS: Max Diameter: 2.21 cm, Min Diameter: 2.13 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 36
+  - SUCCESS: Max Diameter: 2.52 cm, Min Diameter: 2.32 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 33
+  - SUCCESS: Max Diameter: 2.64 cm, Min Diameter: 2.41 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 27
+  - SUCCESS: Max Diameter: 2.91 cm, Min Diameter: 2.70 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 24
+  - SUCCESS: Max Diameter: 3.12 cm, Min Diameter: 2.90 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 24
+  - SUCCESS: Max Diameter: 3.12 cm, Min Diameter: 2.90 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 24
+  - SUCCESS: Max Diameter: 3.12 cm, Min Diameter: 2.90 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 23
+  - SUCCESS: Max Diameter: 3.21 cm, Min Diameter: 3.02 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 23
+  - SUCCESS: Max Diameter: 3.21 cm, Min Diameter: 3.02 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 18
+  - SUCCESS: Max Diameter: 10.00 cm, Min Diameter: 9.97 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 18
+  - SUCCESS: Max Diameter: 10.00 cm, Min Diameter: 9.97 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 18
+  - SUCCESS: Max Diameter: 10.00 cm, Min Diameter: 9.97 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.29 cm, Min Diameter: 3.21 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 23
+  - SUCCESS: Max Diameter: 3.21 cm, Min Diameter: 3.02 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 24
+  - SUCCESS: Max Diameter: 3.12 cm, Min Diameter: 2.90 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 24
+  - SUCCESS: Max Diameter: 3.12 cm, Min Diameter: 2.90 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 23
+  - SUCCESS: Max Diameter: 3.21 cm, Min Diameter: 3.02 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 23
+  - SUCCESS: Max Diameter: 3.21 cm, Min Diameter: 3.02 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 23
+  - SUCCESS: Max Diameter: 3.21 cm, Min Diameter: 3.02 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 23
+  - SUCCESS: Max Diameter: 3.21 cm, Min Diameter: 3.02 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 22
+  - SUCCESS: Max Diameter: 3.24 cm, Min Diameter: 3.17 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 22
+  - SUCCESS: Max Diameter: 3.24 cm, Min Diameter: 3.17 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 22
+  - SUCCESS: Max Diameter: 3.24 cm, Min Diameter: 3.17 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 22
+  - SUCCESS: Max Diameter: 3.24 cm, Min Diameter: 3.17 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 22
+  - SUCCESS: Max Diameter: 3.24 cm, Min Diameter: 3.17 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 22
+  - SUCCESS: Max Diameter: 3.24 cm, Min Diameter: 3.17 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 22
+  - SUCCESS: Max Diameter: 3.24 cm, Min Diameter: 3.17 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.29 cm, Min Diameter: 3.21 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.29 cm, Min Diameter: 3.21 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.29 cm, Min Diameter: 3.21 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.29 cm, Min Diameter: 3.21 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.29 cm, Min Diameter: 3.21 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 22
+  - SUCCESS: Max Diameter: 3.24 cm, Min Diameter: 3.17 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 23
+  - SUCCESS: Max Diameter: 3.21 cm, Min Diameter: 3.02 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 23
+  - SUCCESS: Max Diameter: 3.21 cm, Min Diameter: 3.02 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 23
+  - SUCCESS: Max Diameter: 3.21 cm, Min Diameter: 3.02 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 24
+  - SUCCESS: Max Diameter: 3.12 cm, Min Diameter: 2.90 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 25
+  - SUCCESS: Max Diameter: 3.04 cm, Min Diameter: 2.83 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 27
+  - SUCCESS: Max Diameter: 2.91 cm, Min Diameter: 2.70 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 28
+  - SUCCESS: Max Diameter: 2.87 cm, Min Diameter: 2.63 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 30
+  - SUCCESS: Max Diameter: 2.79 cm, Min Diameter: 2.54 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 31
+  - SUCCESS: Max Diameter: 2.73 cm, Min Diameter: 2.48 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 29
+  - SUCCESS: Max Diameter: 2.82 cm, Min Diameter: 2.58 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 28
+  - SUCCESS: Max Diameter: 2.87 cm, Min Diameter: 2.63 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 25
+  - SUCCESS: Max Diameter: 3.04 cm, Min Diameter: 2.83 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 25
+  - SUCCESS: Max Diameter: 3.04 cm, Min Diameter: 2.83 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 24
+  - SUCCESS: Max Diameter: 3.12 cm, Min Diameter: 2.90 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 23
+  - SUCCESS: Max Diameter: 3.21 cm, Min Diameter: 3.02 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 23
+  - SUCCESS: Max Diameter: 3.21 cm, Min Diameter: 3.02 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 22
+  - SUCCESS: Max Diameter: 3.24 cm, Min Diameter: 3.17 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 22
+  - SUCCESS: Max Diameter: 3.24 cm, Min Diameter: 3.17 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.29 cm, Min Diameter: 3.21 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.29 cm, Min Diameter: 3.21 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.29 cm, Min Diameter: 3.21 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 10.00 cm, Min Diameter: 9.96 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 10.00 cm, Min Diameter: 9.96 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 10.00 cm, Min Diameter: 9.96 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 10.00 cm, Min Diameter: 9.96 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 10.00 cm, Min Diameter: 9.96 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 10.00 cm, Min Diameter: 9.96 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 10.00 cm, Min Diameter: 9.96 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.84 cm, Min Diameter: 9.71 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.29 cm, Min Diameter: 3.21 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.29 cm, Min Diameter: 3.21 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.29 cm, Min Diameter: 3.21 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.29 cm, Min Diameter: 3.21 cm
+  - Plate detected. Ratio: 98.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 98.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.40 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.40 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 4.41 cm, Min Diameter: 4.17 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 4.41 cm, Min Diameter: 4.17 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 4.61 cm, Min Diameter: 4.38 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 4.61 cm, Min Diameter: 4.38 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.40 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.40 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 10.18 cm, Min Diameter: 9.21 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 10.18 cm, Min Diameter: 9.21 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.87 cm, Min Diameter: 3.65 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.87 cm, Min Diameter: 3.65 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.62 cm, Min Diameter: 3.54 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.62 cm, Min Diameter: 3.54 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 2.96 cm, Min Diameter: 2.94 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 2.96 cm, Min Diameter: 2.94 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.58 cm, Min Diameter: 9.39 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.58 cm, Min Diameter: 9.39 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 5.98 cm, Min Diameter: 5.79 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 5.98 cm, Min Diameter: 5.79 cm
+  - Plate detected. Ratio: 99.40 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 5.51 cm, Min Diameter: 5.28 cm
+  - Plate detected. Ratio: 99.40 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 5.51 cm, Min Diameter: 5.28 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.89 cm, Min Diameter: 9.62 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.89 cm, Min Diameter: 9.62 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.94 cm, Min Diameter: 9.70 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.94 cm, Min Diameter: 9.70 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 98.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.54 cm, Min Diameter: 9.43 cm
+  - Plate detected. Ratio: 98.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.54 cm, Min Diameter: 9.43 cm
+  - Plate detected. Ratio: 98.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.82 cm, Min Diameter: 3.45 cm
+  - Plate detected. Ratio: 98.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 3.82 cm, Min Diameter: 3.45 cm
+  - Plate detected. Ratio: 99.40 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 4.03 cm, Min Diameter: 3.92 cm
+  - Plate detected. Ratio: 99.40 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 4.03 cm, Min Diameter: 3.92 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.98 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.98 cm
+  - Plate detected. Ratio: 98.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 10.00 cm, Min Diameter: 9.97 cm
+  - Plate detected. Ratio: 98.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 10.00 cm, Min Diameter: 9.97 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.40 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.40 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.60 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.00 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 5.97 cm, Min Diameter: 5.70 cm
+  - Plate detected. Ratio: 99.00 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 5.97 cm, Min Diameter: 5.70 cm
+  - Plate detected. Ratio: 99.40 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 10.02 cm, Min Diameter: 9.67 cm
+  - Plate detected. Ratio: 99.40 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 10.02 cm, Min Diameter: 9.67 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.80 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 9.99 cm, Min Diameter: 9.99 cm
+  - Plate detected. Ratio: 99.40 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 10.02 cm, Min Diameter: 9.67 cm
+  - Plate detected. Ratio: 99.00 px/cm
+  - Growth Detection Threshold Applied: 21
+  - SUCCESS: Max Diameter: 5.97 cm, Min Diameter: 5.70 cm
