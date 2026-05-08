@@ -488,3 +488,4 @@ Building GUI
   - Plate detected. Ratio: 99.00 px/cm
   - Growth Detection Threshold Applied: 21
   - SUCCESS: Max Diameter: 5.97 cm, Min Diameter: 5.70 cm
+macOS 26 (2603) or later required, have instead 16 (1603) !

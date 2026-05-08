@@ -1,3 +1,3 @@
 #!/bin/zsh
 cd "$(dirname "$0")"
-/usr/local/bin/python3 opencv_growth_ui.py 2>&1 | tee -a gui_startup.log
+open -a "/Applications/Python 3.13/Python Launcher.app" "$PWD/growth_analyzer_gui.py"
