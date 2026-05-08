@@ -10,9 +10,11 @@ import analyze_plates as analyzer
 def parse_args():
     parser = argparse.ArgumentParser(description="Run one agar plate analysis and return JSON.")
     parser.add_argument("image_path")
+    parser.add_argument("--method", choices=("auto", "manual"), default="auto")
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--output-filename", default=None)
     parser.add_argument("--plate-diameter-cm", type=float, default=analyzer.KNOWN_PLATE_DIAMETER_CM)
+    parser.add_argument("--sensitivity", default="Normal")
     parser.add_argument("--growth-threshold", type=int, default=analyzer.GROWTH_DETECTION_THRESHOLD)
     parser.add_argument("--median-blur-size", type=int, default=analyzer.MEDIAN_BLUR_SIZE)
     parser.add_argument("--max-center-deviation-percent", type=float, default=analyzer.MAX_CENTER_DEVIATION_PERCENT)
@@ -26,17 +28,26 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
 
     with contextlib.redirect_stdout(sys.stderr):
-        result = analyzer.analyze_agar_plate(
-            args.image_path,
-            args.output_dir,
-            plate_diameter_cm=args.plate_diameter_cm,
-            growth_threshold=args.growth_threshold,
-            median_blur_size=args.median_blur_size,
-            max_center_deviation_percent=args.max_center_deviation_percent,
-            morph_close_kernel_size=args.morph_close_kernel_size,
-            clahe_clip_limit=args.clahe_clip_limit,
-            output_filename=args.output_filename,
-        )
+        if args.method == "manual":
+            result = analyzer.analyze_agar_plate(
+                args.image_path,
+                args.output_dir,
+                plate_diameter_cm=args.plate_diameter_cm,
+                growth_threshold=args.growth_threshold,
+                median_blur_size=args.median_blur_size,
+                max_center_deviation_percent=args.max_center_deviation_percent,
+                morph_close_kernel_size=args.morph_close_kernel_size,
+                clahe_clip_limit=args.clahe_clip_limit,
+                output_filename=args.output_filename,
+            )
+        else:
+            result = analyzer.auto_analyze_agar_plate(
+                args.image_path,
+                args.output_dir,
+                plate_diameter_cm=args.plate_diameter_cm,
+                sensitivity=parse_sensitivity(args.sensitivity),
+                output_filename=args.output_filename,
+            )
 
     payload = {
         "ok": bool(result),
@@ -44,6 +55,13 @@ def main():
         "error": "" if result else "Analysis failed. Check plate detection or threshold settings.",
     }
     print(json.dumps(payload))
+
+
+def parse_sensitivity(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return value
 
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@ GROWTH_DETECTION_THRESHOLD = 43
 MEDIAN_BLUR_SIZE = 7
 
 # CONTROL 3: MAX CENTER DEVIATION PERCENT
-# What it does: Defines a "search zone" (orange circle) to ignore edge noise. The program will only measure growth whose center falls inside this zone.
+# What it does: Defines an internal search zone to ignore edge noise. The program will only measure growth whose center falls inside this zone.
 # How to tune: A good starting value is 0.3 (30% of the plate's radius).
 MAX_CENTER_DEVIATION_PERCENT = 0.3
 
@@ -55,10 +55,175 @@ HOUGH_PARAMS = {
 INPUT_DIR = 'images'
 OUTPUT_DIR = 'output'
 SUPPORTED_IMAGE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.tif', '.tiff', '.bmp')
+AUTO_SENSITIVITY_LEVELS = {
+    'Conservative': 5.00,
+    'Normal': 1.75,
+    'Sensitive': -1.25,
+}
 
 # =================================================================================
 # --- Main Program (No changes needed below this line) ---
 # =================================================================================
+
+def auto_analyze_agar_plate(
+    image_path,
+    output_dir,
+    plate_diameter_cm=KNOWN_PLATE_DIAMETER_CM,
+    sensitivity='Normal',
+    hough_params=None,
+    output_filename=None,
+    save_output=True,
+    return_image=False,
+):
+    filename = os.path.basename(image_path)
+    hough_params = hough_params or HOUGH_PARAMS
+
+    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    if image is None:
+        print(f"  - ERROR: Could not load image {filename}.")
+        return None
+
+    blurred_for_circles = cv2.GaussianBlur(image, (11, 11), 0)
+    circles = cv2.HoughCircles(blurred_for_circles, cv2.HOUGH_GRADIENT, **hough_params)
+    if circles is None:
+        print(f"  - FAILED: No petri dish circle detected in {filename}.")
+        return None
+
+    plate_x, plate_y, plate_r = np.round(circles[0, 0]).astype("int")
+    pixel_to_cm_ratio = (plate_r * 2) / plate_diameter_cm
+    print(f"  - Plate detected. Ratio: {pixel_to_cm_ratio:.2f} px/cm")
+
+    k = AUTO_SENSITIVITY_LEVELS.get(str(sensitivity), AUTO_SENSITIVITY_LEVELS['Normal'])
+    if isinstance(sensitivity, (int, float)):
+        slider_value = min(100.0, max(0.0, float(sensitivity)))
+        conservative = AUTO_SENSITIVITY_LEVELS['Conservative']
+        normal = AUTO_SENSITIVITY_LEVELS['Normal']
+        sensitive = AUTO_SENSITIVITY_LEVELS['Sensitive']
+        if slider_value <= 50:
+            k = conservative + (normal - conservative) * (slider_value / 50.0)
+        else:
+            k = normal + (sensitive - normal) * ((slider_value - 50.0) / 50.0)
+
+    full_plate_mask = np.zeros_like(image, dtype=np.uint8)
+    cv2.circle(full_plate_mask, (plate_x, plate_y), plate_r, 255, -1)
+    inner_plate_mask = np.zeros_like(image, dtype=np.uint8)
+    cv2.circle(inner_plate_mask, (plate_x, plate_y), int(plate_r * 0.90), 255, -1)
+
+    image_float = image.astype(np.float32)
+    background_sigma = max(25, plate_r / 5)
+    background = cv2.GaussianBlur(image_float, (0, 0), background_sigma)
+    normalized = image_float - background
+
+    background_sample_mask = np.zeros_like(image, dtype=np.uint8)
+    cv2.circle(background_sample_mask, (plate_x, plate_y), int(plate_r * 0.85), 255, -1)
+    cv2.circle(background_sample_mask, (plate_x, plate_y), int(plate_r * 0.45), 0, -1)
+    background_values = normalized[background_sample_mask > 0]
+    if background_values.size < 1000:
+        background_values = normalized[inner_plate_mask > 0]
+
+    background_median = float(np.median(background_values))
+    mad = float(np.median(np.abs(background_values - background_median)))
+    robust_std = max(1.0, 1.4826 * mad)
+    threshold = background_median + (k * robust_std)
+    print(f"  - Auto threshold: background + {k:.2f} std ({threshold:.2f})")
+
+    growth_mask = np.zeros_like(image, dtype=np.uint8)
+    growth_mask[(normalized > threshold) & (inner_plate_mask > 0)] = 255
+
+    open_size = max(3, int(plate_r * 0.008))
+    close_size = max(9, int(plate_r * 0.045))
+    open_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (open_size, open_size))
+    close_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (close_size, close_size))
+    growth_mask = cv2.morphologyEx(growth_mask, cv2.MORPH_OPEN, open_kernel)
+    growth_mask = cv2.morphologyEx(growth_mask, cv2.MORPH_CLOSE, close_kernel)
+
+    contours, _ = cv2.findContours(growth_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        print("  - FAILED: No contours detected after auto processing.")
+        return None
+
+    valid_contours = []
+    max_deviation_pixels = plate_r * 0.38
+    min_area = np.pi * (plate_r * 0.025) ** 2
+    for contour in contours:
+        if len(contour) < 5:
+            continue
+        if cv2.contourArea(contour) < min_area:
+            continue
+        moments = cv2.moments(contour)
+        if moments["m00"] == 0:
+            continue
+        cx = int(moments["m10"] / moments["m00"])
+        cy = int(moments["m01"] / moments["m00"])
+        distance = np.sqrt((cx - plate_x) ** 2 + (cy - plate_y) ** 2)
+        if distance <= max_deviation_pixels:
+            valid_contours.append(contour)
+
+    if not valid_contours:
+        print("  - FAILED: No central growth found after auto processing.")
+        return None
+
+    main_contour = max(valid_contours, key=cv2.contourArea)
+    ellipse = cv2.fitEllipse(main_contour)
+    (center_ellipse, axes, angle) = ellipse
+    min_axis_pixels, max_axis_pixels = axes
+
+    output_image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    cv2.circle(output_image, (plate_x, plate_y), plate_r, (0, 255, 0), 4)
+    cv2.drawContours(output_image, [main_contour], -1, (0, 255, 255), 2)
+    cv2.ellipse(output_image, ellipse, (0, 0, 255), 3)
+
+    r_max = max_axis_pixels / 2
+    r_min = min_axis_pixels / 2
+    angle_rad = np.deg2rad(angle)
+    max_p1 = (
+        int(center_ellipse[0] - r_max * np.sin(angle_rad)),
+        int(center_ellipse[1] + r_max * np.cos(angle_rad))
+    )
+    max_p2 = (
+        int(center_ellipse[0] + r_max * np.sin(angle_rad)),
+        int(center_ellipse[1] - r_max * np.cos(angle_rad))
+    )
+    min_p1 = (
+        int(center_ellipse[0] - r_min * np.cos(angle_rad)),
+        int(center_ellipse[1] - r_min * np.sin(angle_rad))
+    )
+    min_p2 = (
+        int(center_ellipse[0] + r_min * np.cos(angle_rad)),
+        int(center_ellipse[1] + r_min * np.sin(angle_rad))
+    )
+    cv2.line(output_image, max_p1, max_p2, (255, 0, 0), 2)
+    cv2.line(output_image, min_p1, min_p2, (0, 0, 255), 2)
+
+    max_diam_cm = max_axis_pixels / pixel_to_cm_ratio
+    min_diam_cm = min_axis_pixels / pixel_to_cm_ratio
+    print(f"  - SUCCESS: Max Diameter: {max_diam_cm:.2f} cm, Min Diameter: {min_diam_cm:.2f} cm")
+
+    text_center = (int(center_ellipse[0]), int(center_ellipse[1]))
+    cv2.putText(output_image, f"Max: {max_diam_cm:.2f} cm", (text_center[0] - 60, text_center[1] - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+    cv2.putText(output_image, f"Min: {min_diam_cm:.2f} cm", (text_center[0] - 60, text_center[1] + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+
+    y_start, y_end = max(0, plate_y - plate_r), min(output_image.shape[0], plate_y + plate_r)
+    x_start, x_end = max(0, plate_x - plate_r), min(output_image.shape[1], plate_x + plate_r)
+    cropped_output = output_image[y_start:y_end, x_start:x_end]
+
+    output_path = ""
+    if save_output:
+        output_path = os.path.join(output_dir, output_filename or f"analyzed_{filename}")
+        cv2.imwrite(output_path, cropped_output)
+
+    result = {
+        'Filename': filename,
+        'Method': 'Auto',
+        'Sensitivity': str(sensitivity),
+        'Max_Diameter_cm': float(round(max_diam_cm, 2)),
+        'Min_Diameter_cm': float(round(min_diam_cm, 2)),
+        'Pixel_to_CM_Ratio': float(round(pixel_to_cm_ratio, 2)),
+        'Output_Path': output_path,
+    }
+    if return_image:
+        result['Annotated_Image'] = cropped_output
+    return result
 
 def analyze_agar_plate(
     image_path,
@@ -144,7 +309,6 @@ def analyze_agar_plate(
     output_image = cv2.cvtColor(contrast_enhanced_image, cv2.COLOR_GRAY2BGR)
     
     cv2.circle(output_image, (plate_x, plate_y), plate_r, (0, 255, 0), 4)
-    cv2.circle(output_image, (plate_x, plate_y), int(max_deviation_pixels), (0, 165, 255), 2)
     
     cv2.ellipse(output_image, ellipse, (0, 0, 255), 3)
 

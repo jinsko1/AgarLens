@@ -20,6 +20,13 @@ if not os.environ.get("SWIM_TK_UI_REEXECED") and sys.executable.startswith("/opt
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+try:
+    from PIL import Image, ImageEnhance, ImageTk
+except ImportError:
+    Image = None
+    ImageEnhance = None
+    ImageTk = None
+
 
 APP_TITLE = "Swim Diameter Analyzer"
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -31,20 +38,14 @@ PREVIEW_DEBOUNCE_MS = 900
 
 SETTING_HELP = {
     "Plate diameter (cm)": "The real width of your agar plate. This converts pixels into centimeters. If this is wrong, every measurement will be scaled wrong.",
-    "Growth threshold": "How bright a pixel must be before it counts as growth. Higher values measure only brighter growth. Lower values include fainter growth, but may include background noise.",
-    "Denoise blur": "Smooths tiny specks, dust, and scanner scratches before measuring. Larger values clean up noisy images, but can soften small details.",
-    "Search zone": "Limits detection to growth near the plate center. Increase this if real growth is off-center. Decrease it if edges or labels are being counted.",
-    "Gap closing": "Connects broken rings or gaps in the detected growth area. Increase it when growth looks split apart. Decrease it if separate marks are being merged.",
-    "Contrast limit": "Boosts faint growth before measuring. Increase it for pale growth. Decrease it if the background becomes too bright.",
+    "Detection sensitivity": "Controls how readily the app accepts faint growth after it compares the colony to that plate's own background. Move left to avoid noise. Move right to capture wider, lighter growth.",
+    "Preview contrast": "Changes only how the preview looks on screen. It does not change the measurement algorithm, the saved analysis image, or the CSV results.",
 }
 
 DEFAULTS = {
     "plate_diameter_cm": 10.0,
-    "growth_threshold": 43,
-    "median_blur_size": 7,
-    "max_center_deviation_percent": 0.30,
-    "morph_close_kernel_size": 46,
-    "clahe_clip_limit": 2.0,
+    "sensitivity": 50.0,
+    "preview_contrast": 1.0,
 }
 
 
@@ -82,15 +83,13 @@ class GrowthAnalyzerGUI:
         self.preview_generation = 0
         self.preview_pending = False
         self.preview_path = None
+        self.preview_display_path = None
         self.preview_photo = None
 
         self.output_dir_var = tk.StringVar(value=OUTPUT_DIR)
         self.plate_diameter_var = tk.DoubleVar(value=DEFAULTS["plate_diameter_cm"])
-        self.threshold_var = tk.IntVar(value=DEFAULTS["growth_threshold"])
-        self.blur_var = tk.IntVar(value=DEFAULTS["median_blur_size"])
-        self.center_zone_var = tk.DoubleVar(value=DEFAULTS["max_center_deviation_percent"])
-        self.close_kernel_var = tk.IntVar(value=DEFAULTS["morph_close_kernel_size"])
-        self.clahe_var = tk.DoubleVar(value=DEFAULTS["clahe_clip_limit"])
+        self.sensitivity_var = tk.DoubleVar(value=DEFAULTS["sensitivity"])
+        self.preview_contrast_var = tk.DoubleVar(value=DEFAULTS["preview_contrast"])
 
         self._load_theme()
         self._build_ui()
@@ -142,16 +141,13 @@ class GrowthAnalyzerGUI:
         ttk.Entry(output, textvariable=self.output_dir_var).grid(row=0, column=0, sticky="ew", padx=(0, 8))
         ttk.Button(output, text="Browse", command=self.choose_output_dir).grid(row=0, column=1)
 
-        settings = ttk.LabelFrame(parent, text="Analysis Settings", padding=12)
+        settings = ttk.LabelFrame(parent, text="Auto Analysis Settings", padding=12)
         settings.grid(row=5, column=0, sticky="ew")
         settings.columnconfigure(0, weight=1)
         settings.columnconfigure(1, weight=0)
         self._spin(settings, 0, "Plate diameter (cm)", self.plate_diameter_var, 1.0, 30.0, 0.1)
-        self._scale(settings, 2, "Growth threshold", self.threshold_var, 0, 255, integer=True)
-        self._blur(settings, 4)
-        self._scale(settings, 6, "Search zone", self.center_zone_var, 0.05, 0.80)
-        self._spin(settings, 8, "Gap closing", self.close_kernel_var, 1, 140, 1)
-        self._spin(settings, 10, "Contrast limit", self.clahe_var, 1.0, 50.0, 0.5)
+        self._sensitivity(settings, 2)
+        self._preview_contrast(settings, 5)
 
         self.run_button = ttk.Button(parent, text="Run Batch Analysis", command=self.start_batch_analysis, style="Accent.TButton")
         self.run_button.grid(row=6, column=0, sticky="ew", pady=(18, 8), ipady=4)
@@ -169,24 +165,60 @@ class GrowthAnalyzerGUI:
         self._info_button(parent, row, label)
         ttk.Spinbox(parent, textvariable=variable, from_=from_, to=to, increment=increment).grid(row=row + 1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
 
-    def _scale(self, parent, row, label, variable, from_, to, integer=False):
-        label_var = tk.StringVar()
+    def _sensitivity(self, parent, row):
+        self.sensitivity_label_var = tk.StringVar()
 
         def update_label(*_):
-            value = variable.get()
-            display_value = str(int(value)) if integer else format(value, ".2f")
-            label_var.set(f"{label}: {display_value}")
+            value = self.sensitivity_var.get()
+            if value < 20:
+                zone = "Very conservative"
+            elif value < 40:
+                zone = "Conservative"
+            elif value > 80:
+                zone = "Very sensitive"
+            elif value > 60:
+                zone = "Sensitive"
+            else:
+                zone = "Balanced"
+            self.sensitivity_label_var.set(f"Detection sensitivity: {zone}")
 
-        variable.trace_add("write", update_label)
+        self.sensitivity_var.trace_add("write", update_label)
         update_label()
-        ttk.Label(parent, textvariable=label_var).grid(row=row, column=0, sticky="w", pady=(0, 4))
-        self._info_button(parent, row, label)
-        ttk.Scale(parent, variable=variable, from_=from_, to=to).grid(row=row + 1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        ttk.Label(parent, textvariable=self.sensitivity_label_var).grid(row=row, column=0, sticky="w", pady=(0, 4))
+        self._info_button(parent, row, "Detection sensitivity")
+        sensitivity = ttk.Scale(parent, variable=self.sensitivity_var, from_=0, to=100)
+        sensitivity.grid(row=row + 1, column=0, columnspan=2, sticky="ew", pady=(0, 2))
 
-    def _blur(self, parent, row):
-        ttk.Label(parent, text="Denoise blur").grid(row=row, column=0, sticky="w", pady=(0, 4))
-        self._info_button(parent, row, "Denoise blur")
-        ttk.Combobox(parent, textvariable=self.blur_var, values=(1, 3, 5, 7, 9, 11), state="readonly").grid(row=row + 1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        axis = ttk.Frame(parent)
+        axis.grid(row=row + 2, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        axis.columnconfigure(0, weight=1)
+        axis.columnconfigure(1, weight=1)
+        axis.columnconfigure(2, weight=1)
+        ttk.Label(axis, text="Very conservative").grid(row=0, column=0, sticky="w")
+        ttk.Label(axis, text="Balanced").grid(row=0, column=1)
+        ttk.Label(axis, text="Very sensitive").grid(row=0, column=2, sticky="e")
+
+    def _preview_contrast(self, parent, row):
+        self.preview_contrast_label_var = tk.StringVar()
+
+        def update_label(*_):
+            self.preview_contrast_label_var.set(f"Preview contrast: {self.preview_contrast_var.get():.1f}x")
+
+        self.preview_contrast_var.trace_add("write", update_label)
+        update_label()
+        ttk.Label(parent, textvariable=self.preview_contrast_label_var).grid(row=row, column=0, sticky="w", pady=(0, 4))
+        self._info_button(parent, row, "Preview contrast")
+        contrast = ttk.Scale(parent, variable=self.preview_contrast_var, from_=0.4, to=3.0)
+        contrast.grid(row=row + 1, column=0, columnspan=2, sticky="ew", pady=(0, 2))
+
+        axis = ttk.Frame(parent)
+        axis.grid(row=row + 2, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        axis.columnconfigure(0, weight=1)
+        axis.columnconfigure(1, weight=1)
+        axis.columnconfigure(2, weight=1)
+        ttk.Label(axis, text="Softer").grid(row=0, column=0, sticky="w")
+        ttk.Label(axis, text="Original").grid(row=0, column=1)
+        ttk.Label(axis, text="Higher contrast").grid(row=0, column=2, sticky="e")
 
     def _info_button(self, parent, row, label):
         InfoButton(parent, command=lambda: self.show_setting_help(label)).grid(row=row, column=1, sticky="e", padx=(8, 0), pady=(0, 4))
@@ -275,6 +307,7 @@ class GrowthAnalyzerGUI:
         self.row_paths = {}
         self.results_by_path = {}
         self.preview_path = None
+        self.preview_display_path = None
         self.preview_photo = None
         self.preview_generation += 1
         for item in self.table.get_children():
@@ -444,13 +477,10 @@ class GrowthAnalyzerGUI:
     def _bind_preview_traces(self):
         for variable in (
             self.plate_diameter_var,
-            self.threshold_var,
-            self.blur_var,
-            self.center_zone_var,
-            self.close_kernel_var,
-            self.clahe_var,
+            self.sensitivity_var,
         ):
             variable.trace_add("write", lambda *_: self.schedule_live_preview())
+        self.preview_contrast_var.trace_add("write", lambda *_: self.refresh_preview_display())
 
     def schedule_live_preview(self, delay=PREVIEW_DEBOUNCE_MS):
         if not self.preview_path:
@@ -503,28 +533,38 @@ class GrowthAnalyzerGUI:
         if not path or not os.path.exists(path):
             return
         try:
-            photo = tk.PhotoImage(file=path)
-            max_w = max(360, self.preview_label.winfo_width() - 20)
-            max_h = max(280, self.preview_label.winfo_height() - 20)
-            shrink = max(1, int(max(photo.width() / max_w, photo.height() / max_h)))
-            if shrink > 1:
-                photo = photo.subsample(shrink, shrink)
-            self.preview_photo = photo
-            self.preview_label.config(image=self.preview_photo, text="")
+            self.preview_display_path = path
+            self.refresh_preview_display()
         except tk.TclError as exc:
             self.preview_label.config(text=f"Preview unavailable: {exc}", image="")
 
+    def refresh_preview_display(self):
+        path = self.preview_display_path
+        if not path or not os.path.exists(path):
+            return
+        try:
+            max_w = max(360, self.preview_label.winfo_width() - 20)
+            max_h = max(280, self.preview_label.winfo_height() - 20)
+            if Image is not None and ImageTk is not None and ImageEnhance is not None:
+                image = Image.open(path).convert("RGB")
+                contrast = float(self.preview_contrast_var.get())
+                image = ImageEnhance.Contrast(image).enhance(contrast)
+                image.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
+                self.preview_photo = ImageTk.PhotoImage(image)
+            else:
+                photo = tk.PhotoImage(file=path)
+                shrink = max(1, int(max(photo.width() / max_w, photo.height() / max_h)))
+                if shrink > 1:
+                    photo = photo.subsample(shrink, shrink)
+                self.preview_photo = photo
+            self.preview_label.config(image=self.preview_photo, text="")
+        except (tk.TclError, OSError, ValueError) as exc:
+            self.preview_label.config(text=f"Preview unavailable: {exc}", image="")
+
     def settings(self):
-        blur = int(self.blur_var.get())
-        if blur % 2 == 0:
-            blur += 1
         return {
             "plate_diameter_cm": float(self.plate_diameter_var.get()),
-            "growth_threshold": int(float(self.threshold_var.get())),
-            "median_blur_size": blur,
-            "max_center_deviation_percent": float(self.center_zone_var.get()),
-            "morph_close_kernel_size": max(1, int(float(self.close_kernel_var.get()))),
-            "clahe_clip_limit": float(self.clahe_var.get()),
+            "sensitivity": round(float(self.sensitivity_var.get()), 1),
         }
 
     def write_current_csv(self):
@@ -564,22 +604,16 @@ def run_analysis(image_path, output_dir, output_filename, settings):
         ANALYSIS_PYTHON,
         WORKER_PATH,
         image_path,
+        "--method",
+        "auto",
         "--output-dir",
         output_dir,
         "--output-filename",
         output_filename,
         "--plate-diameter-cm",
         str(settings["plate_diameter_cm"]),
-        "--growth-threshold",
-        str(settings["growth_threshold"]),
-        "--median-blur-size",
-        str(settings["median_blur_size"]),
-        "--max-center-deviation-percent",
-        str(settings["max_center_deviation_percent"]),
-        "--morph-close-kernel-size",
-        str(settings["morph_close_kernel_size"]),
-        "--clahe-clip-limit",
-        str(settings["clahe_clip_limit"]),
+        "--sensitivity",
+        str(settings["sensitivity"]),
     ]
     completed = subprocess.run(command, text=True, capture_output=True, check=False)
     if completed.returncode != 0:
@@ -601,7 +635,7 @@ def preview_filename_for(index, path):
 
 
 def write_csv(path, rows):
-    fieldnames = ["Filename", "Source_Path", "Status", "Max_Diameter_cm", "Min_Diameter_cm", "Pixel_to_CM_Ratio", "Output_Path"]
+    fieldnames = ["Filename", "Source_Path", "Status", "Method", "Sensitivity", "Max_Diameter_cm", "Min_Diameter_cm", "Pixel_to_CM_Ratio", "Output_Path"]
     with open(path, "w", newline="", encoding="utf-8") as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()
