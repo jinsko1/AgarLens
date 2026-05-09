@@ -197,6 +197,7 @@ def auto_analyze_agar_plate(
 
     max_diam_cm = max_axis_pixels / pixel_to_cm_ratio
     min_diam_cm = min_axis_pixels / pixel_to_cm_ratio
+    area_cm2 = np.pi * (max_diam_cm / 2) * (min_diam_cm / 2)
     print(f"  - SUCCESS: Max Diameter: {max_diam_cm:.2f} cm, Min Diameter: {min_diam_cm:.2f} cm")
 
     text_center = (int(center_ellipse[0]), int(center_ellipse[1]))
@@ -206,6 +207,21 @@ def auto_analyze_agar_plate(
     y_start, y_end = max(0, plate_y - plate_r), min(output_image.shape[0], plate_y + plate_r)
     x_start, x_end = max(0, plate_x - plate_r), min(output_image.shape[1], plate_x + plate_r)
     cropped_output = output_image[y_start:y_end, x_start:x_end]
+    ellipse_points = cv2.ellipse2Poly(
+        (int(center_ellipse[0]), int(center_ellipse[1])),
+        (max(1, int(max_axis_pixels / 2)), max(1, int(min_axis_pixels / 2))),
+        int(angle),
+        0,
+        360,
+        5,
+    )
+    ellipse_x, ellipse_y, ellipse_w, ellipse_h = cv2.boundingRect(ellipse_points)
+    ellipse_bbox = [
+        float(ellipse_x - x_start),
+        float(ellipse_y - y_start),
+        float(ellipse_x + ellipse_w - x_start),
+        float(ellipse_y + ellipse_h - y_start),
+    ]
 
     output_path = ""
     if save_output:
@@ -218,7 +234,10 @@ def auto_analyze_agar_plate(
         'Sensitivity': str(sensitivity),
         'Max_Diameter_cm': float(round(max_diam_cm, 2)),
         'Min_Diameter_cm': float(round(min_diam_cm, 2)),
+        'Area_cm2': float(round(area_cm2, 2)),
         'Pixel_to_CM_Ratio': float(round(pixel_to_cm_ratio, 2)),
+        'Ellipse_BBox_px': ellipse_bbox,
+        'Crop_Box_px': [int(x_start), int(y_start), int(x_end), int(y_end)],
         'Output_Path': output_path,
     }
     if return_image:
@@ -312,12 +331,6 @@ def analyze_agar_plate(
     
     cv2.ellipse(output_image, ellipse, (0, 0, 255), 3)
 
-    center_search_radius = int(plate_r * 0.2)
-    center_mask = np.zeros_like(image)
-    cv2.circle(center_mask, (plate_x, plate_y), center_search_radius, 255, -1)
-    _, _, _, max_loc = cv2.minMaxLoc(image, mask=center_mask)
-    cv2.circle(output_image, max_loc, 10, (255, 255, 0), 2)
-
     # ####################################################################
     # ## NEW LOGIC TO DRAW DIAMETER LINES ##
     # ####################################################################
@@ -353,6 +366,7 @@ def analyze_agar_plate(
     # --- 5. CONVERT TO CM AND SAVE ---
     max_diam_cm = max_axis_pixels / pixel_to_cm_ratio
     min_diam_cm = min_axis_pixels / pixel_to_cm_ratio
+    area_cm2 = np.pi * (max_diam_cm / 2) * (min_diam_cm / 2)
     print(f"  - SUCCESS: Max Diameter: {max_diam_cm:.2f} cm, Min Diameter: {min_diam_cm:.2f} cm")
 
     text_center = (int(center_ellipse[0]), int(center_ellipse[1]))
@@ -362,6 +376,21 @@ def analyze_agar_plate(
     y_start, y_end = max(0, plate_y - plate_r), min(output_image.shape[0], plate_y + plate_r)
     x_start, x_end = max(0, plate_x - plate_r), min(output_image.shape[1], plate_x + plate_r)
     cropped_output = output_image[y_start:y_end, x_start:x_end]
+    ellipse_points = cv2.ellipse2Poly(
+        (int(center_ellipse[0]), int(center_ellipse[1])),
+        (max(1, int(max_axis_pixels / 2)), max(1, int(min_axis_pixels / 2))),
+        int(angle),
+        0,
+        360,
+        5,
+    )
+    ellipse_x, ellipse_y, ellipse_w, ellipse_h = cv2.boundingRect(ellipse_points)
+    ellipse_bbox = [
+        float(ellipse_x - x_start),
+        float(ellipse_y - y_start),
+        float(ellipse_x + ellipse_w - x_start),
+        float(ellipse_y + ellipse_h - y_start),
+    ]
 
     output_path = ""
     if save_output:
@@ -372,7 +401,10 @@ def analyze_agar_plate(
         'Filename': filename,
         'Max_Diameter_cm': float(round(max_diam_cm, 2)),
         'Min_Diameter_cm': float(round(min_diam_cm, 2)),
+        'Area_cm2': float(round(area_cm2, 2)),
         'Pixel_to_CM_Ratio': float(round(pixel_to_cm_ratio, 2)),
+        'Ellipse_BBox_px': ellipse_bbox,
+        'Crop_Box_px': [int(x_start), int(y_start), int(x_end), int(y_end)],
         'Output_Path': output_path,
     }
     if return_image:

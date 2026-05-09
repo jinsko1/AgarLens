@@ -489,3 +489,91 @@ Building GUI
   - Growth Detection Threshold Applied: 21
   - SUCCESS: Max Diameter: 5.97 cm, Min Diameter: 5.70 cm
 macOS 26 (2603) or later required, have instead 16 (1603) !
+
+--- Launch Fri May  8 15:10:29 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+
+--- Launch Fri May  8 15:12:15 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+2026-05-08 15:13:27.904 Python[48145:23295609] error messaging the mach port for IMKCFRunLoopWakeUpReliable
+
+--- Launch Fri May  8 18:26:07 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+Mainloop exited
+
+--- Launch Fri May  8 18:34:18 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+
+--- Launch Fri May  8 18:46:51 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+
+--- Launch Fri May  8 18:54:24 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+Mainloop exited
+
+--- Launch Fri May  8 19:03:54 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+
+--- Launch Fri May  8 19:14:56 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+
+--- Launch Fri May  8 19:18:22 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+
+--- Launch Fri May  8 19:19:30 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+
+--- Launch Fri May  8 19:20:42 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+
+--- Launch Fri May  8 19:24:42 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+
+--- Launch Fri May  8 19:27:06 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+
+--- Launch Fri May  8 19:29:21 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+
+--- Launch Fri May  8 19:32:06 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+
+--- Launch Fri May  8 19:35:40 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+
+--- Launch Fri May  8 19:46:38 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop

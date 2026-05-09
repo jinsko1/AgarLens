@@ -1,3 +1,4 @@
 #!/bin/zsh
 cd "$(dirname "$0")"
-open -a "/Applications/Python 3.13/Python Launcher.app" "$PWD/growth_analyzer_gui.py"
+echo "\n--- Launch $(date) ---" >> gui_startup.log
+/usr/local/bin/python3 "$PWD/growth_analyzer_gui.py" >> gui_startup.log 2>&1
