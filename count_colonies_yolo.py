@@ -11,7 +11,12 @@ import count_colonies as legacy_count_colonies
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.environ.setdefault("YOLO_AUTOINSTALL", "false")
-MODEL_PATH = os.path.join(PROJECT_DIR, "runs", "detect", "train-5", "weights", "best.pt")
+DEFAULT_MODEL_PATH = os.path.join(PROJECT_DIR, "runs", "detect", "train-5", "weights", "best.pt")
+MODEL_PATH = os.path.abspath(
+    os.environ.get("AGARLENS_MODEL_PATH")
+    or os.environ.get("AGARLENS_YOLO_MODEL")
+    or DEFAULT_MODEL_PATH
+)
 IMG_SIZE = 1024
 DEFAULT_IOU = 0.50
 DEFAULT_MAX_DET = 1000

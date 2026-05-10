@@ -1,4 +1,4 @@
-#!/usr/local/bin/python3
+#!/usr/bin/env python3
 
 import csv
 import json
@@ -11,13 +11,8 @@ import threading
 import time
 
 
-UI_PYTHON = "/usr/local/bin/python3"
-ANALYSIS_PYTHON = "/usr/local/bin/python3"
-
-if not os.environ.get("SWIM_TK_UI_REEXECED") and sys.executable.startswith("/opt/homebrew/"):
-    env = os.environ.copy()
-    env["SWIM_TK_UI_REEXECED"] = "1"
-    os.execve(UI_PYTHON, [UI_PYTHON, os.path.abspath(__file__), *sys.argv[1:]], env)
+APP_PYTHON = os.environ.get("AGARLENS_PYTHON") or sys.executable
+ANALYSIS_PYTHON = APP_PYTHON
 
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -78,6 +73,16 @@ COLONY_DEFAULTS = {
 def log_startup(message):
     with open(STARTUP_LOG_PATH, "a", encoding="utf-8") as log_file:
         log_file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')}  {message}\n")
+
+
+def open_folder(path):
+    os.makedirs(path, exist_ok=True)
+    if sys.platform == "darwin":
+        subprocess.run(["open", path], check=False)
+    elif os.name == "nt":
+        os.startfile(path)
+    else:
+        subprocess.run(["xdg-open", path], check=False)
 
 
 def ensure_pil_loaded():
@@ -1307,8 +1312,7 @@ class GrowthAnalyzerGUI:
         self.update_undo_button()
 
     def open_output_dir(self):
-        os.makedirs(self.output_dir_var.get(), exist_ok=True)
-        subprocess.run(["open", self.output_dir_var.get()], check=False)
+        open_folder(self.output_dir_var.get())
 
     def return_to_title_page(self):
         if self.is_busy():
@@ -1908,8 +1912,7 @@ class ColonyCounterGUI:
             write_colony_csv(os.path.join(self.output_dir_var.get(), "colony_counts.csv"), rows)
 
     def open_output_dir(self):
-        os.makedirs(self.output_dir_var.get(), exist_ok=True)
-        subprocess.run(["open", self.output_dir_var.get()], check=False)
+        open_folder(self.output_dir_var.get())
 
     def return_to_title_page(self):
         if self.is_busy():
