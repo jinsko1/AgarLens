@@ -8,30 +8,47 @@ import numpy as np
 
 import count_colonies as legacy_count_colonies
 
-try:
-    import torch
-except ImportError:
-    torch = None
-
-try:
-    from ultralytics import YOLO
-except ImportError:
-    YOLO = None
-
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+os.environ.setdefault("YOLO_AUTOINSTALL", "false")
 MODEL_PATH = os.path.join(PROJECT_DIR, "runs", "detect", "train-5", "weights", "best.pt")
 IMG_SIZE = 1024
 DEFAULT_IOU = 0.50
 DEFAULT_MAX_DET = 1000
-INNER_PLATE_FRACTION = 0.94
+INNER_PLATE_FRACTION = 0.97
 MIN_BOX_FRACTION_INSIDE_PLATE = 0.50
 TOO_MANY_TO_COUNT_LIMIT = legacy_count_colonies.TOO_MANY_TO_COUNT_LIMIT
 
 _model = None
+_torch = None
+_yolo_class = None
+
+
+def get_torch():
+    global _torch
+    if _torch is None:
+        try:
+            import torch as torch_module
+        except ImportError:
+            _torch = False
+        else:
+            _torch = torch_module
+    return None if _torch is False else _torch
+
+
+def get_yolo_class():
+    global _yolo_class
+    if _yolo_class is None:
+        try:
+            from ultralytics import YOLO as yolo_class
+        except ImportError as exc:
+            raise ImportError("The ultralytics package is required for YOLO colony counting.") from exc
+        _yolo_class = yolo_class
+    return _yolo_class
 
 
 def get_device():
+    torch = get_torch()
     if torch is not None:
         if getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
             return "mps"
@@ -43,12 +60,11 @@ def get_device():
 def get_model():
     global _model
     if _model is None:
-        if YOLO is None:
-            raise ImportError("The ultralytics package is required for YOLO colony counting.")
         if not os.path.exists(MODEL_PATH):
             raise FileNotFoundError(
                 f"YOLO model not found at {MODEL_PATH}. Add your trained best.pt file there."
             )
+        YOLO = get_yolo_class()
         _model = YOLO(MODEL_PATH)
     return _model
 
@@ -151,6 +167,18 @@ def draw_count_text(output_image, text):
     text_x = max(20, output_image.shape[1] - text_size[0] - 20)
     text_y = output_image.shape[0] - 20
     cv2.putText(output_image, text, (text_x, text_y), font, font_scale, (255, 255, 255), font_thickness)
+
+
+def crop_around_plate(image, plate_x, plate_y, plate_r, margin_fraction=0.08):
+    height, width = image.shape[:2]
+    margin = int(max(20, plate_r * margin_fraction))
+    x1 = max(0, int(plate_x - plate_r - margin))
+    y1 = max(0, int(plate_y - plate_r - margin))
+    x2 = min(width, int(plate_x + plate_r + margin))
+    y2 = min(height, int(plate_y + plate_r + margin))
+    if x2 <= x1 or y2 <= y1:
+        return image, [0, 0, width, height]
+    return image[y1:y2, x1:x2].copy(), [x1, y1, x2, y2]
 
 
 def process_image(
@@ -285,12 +313,13 @@ def process_image(
         cv2.circle(output_image, (cx, cy), 2, (0, 0, 255), 3)
 
     text = f"Too many to count (>{TOO_MANY_TO_COUNT_LIMIT})" if too_many_to_count else f"Colony Count: {colony_count}"
-    draw_count_text(output_image, text)
+    cropped_output, crop_box = crop_around_plate(output_image, plate_x, plate_y, plate_r)
+    draw_count_text(cropped_output, text)
 
     os.makedirs(output_dir, exist_ok=True)
     output_filename = output_filename or f"{os.path.splitext(filename)[0]}_colonies_counted.png"
     output_path = os.path.join(output_dir, output_filename)
-    cv2.imwrite(output_path, output_image)
+    cv2.imwrite(output_path, cropped_output)
     print(f"  - Count result: {colony_count}")
     print(f"  - Saved annotated image to: {output_path}")
 
@@ -301,7 +330,7 @@ def process_image(
         os.makedirs(diagnostics_path, exist_ok=True)
         cv2.imwrite(os.path.join(diagnostics_path, "01_plate_mask.png"), allowed_plate_mask)
         cv2.imwrite(os.path.join(diagnostics_path, "02_masked_yolo_input.png"), masked_image)
-        cv2.imwrite(os.path.join(diagnostics_path, "03_final_overlay.png"), output_image)
+        cv2.imwrite(os.path.join(diagnostics_path, "03_final_overlay.png"), cropped_output)
         colonies_debug_csv_path = os.path.join(diagnostics_path, "yolo_detections_debug.csv")
         write_yolo_debug_csv(colonies_debug_csv_path, debug_rows)
 
@@ -314,6 +343,7 @@ def process_image(
             "Too_Many_To_Count_Limit": TOO_MANY_TO_COUNT_LIMIT,
             "Count_Stopped_Early": too_many_to_count,
             "Output_Path": output_path,
+            "Crop_Box_px": crop_box,
             "Detection_Sensitivity": sensitivity,
             "Colony_Size": colony_size,
             "Split_Touching": bool(split_touching),

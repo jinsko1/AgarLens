@@ -8,6 +8,7 @@ import queue
 import subprocess
 import sys
 import threading
+import time
 
 
 UI_PYTHON = "/usr/local/bin/python3"
@@ -21,18 +22,13 @@ if not os.environ.get("SWIM_TK_UI_REEXECED") and sys.executable.startswith("/opt
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-import count_colonies_yolo as count_colonies
-
-try:
-    from PIL import Image, ImageDraw, ImageEnhance, ImageTk
-except ImportError:
-    Image = None
-    ImageDraw = None
-    ImageEnhance = None
-    ImageTk = None
+Image = None
+ImageDraw = None
+ImageEnhance = None
+ImageTk = None
 
 
-APP_TITLE = "Agar Plate Analysis Suite"
+APP_TITLE = "AgarLens"
 SWIM_TITLE = "Swim Diameter Analyzer"
 COLONY_TITLE = "Colony Counter"
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -44,6 +40,10 @@ COLONY_PREVIEW_DIR = os.path.join(COLONY_OUTPUT_DIR, "live_preview")
 SUPPORTED_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp")
 PREVIEW_DEBOUNCE_MS = 900
 STARTUP_LOG_PATH = os.path.join(PROJECT_DIR, "gui_startup.log")
+COLONY_TOO_MANY_TO_COUNT_LIMIT = 300
+PREVIEW_CACHE_LIMIT = 256
+USE_AZURE_THEME = False
+_colony_backend = None
 
 SETTING_HELP = {
     "Plate diameter (cm)": "The real width of your agar plate. This converts pixels into centimeters. If this is wrong, every measurement will be scaled wrong.",
@@ -77,7 +77,73 @@ COLONY_DEFAULTS = {
 
 def log_startup(message):
     with open(STARTUP_LOG_PATH, "a", encoding="utf-8") as log_file:
-        log_file.write(f"{message}\n")
+        log_file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')}  {message}\n")
+
+
+def ensure_pil_loaded():
+    global Image, ImageDraw, ImageEnhance, ImageTk
+    if Image is not None and ImageDraw is not None and ImageEnhance is not None and ImageTk is not None:
+        return True
+    try:
+        from PIL import Image as pil_image
+        from PIL import ImageDraw as pil_image_draw
+        from PIL import ImageEnhance as pil_image_enhance
+        from PIL import ImageTk as pil_image_tk
+    except ImportError:
+        return False
+    Image = pil_image
+    ImageDraw = pil_image_draw
+    ImageEnhance = pil_image_enhance
+    ImageTk = pil_image_tk
+    return True
+
+
+def get_colony_backend():
+    global _colony_backend
+    if _colony_backend is None:
+        import count_colonies_yolo as backend
+        _colony_backend = backend
+    return _colony_backend
+
+
+def show_title_page(root):
+    for child in root.winfo_children():
+        child.destroy()
+    ProgramLauncher(root)
+
+
+def load_preview_photo(cache_owner, path, max_w, max_h, contrast):
+    ensure_pil_loaded()
+    try:
+        stat = os.stat(path)
+        signature = (stat.st_mtime_ns, stat.st_size)
+    except OSError:
+        signature = (0, 0)
+    cache_key = (path, signature, int(max_w), int(max_h), round(float(contrast), 1), bool(Image and ImageTk and ImageEnhance))
+    cached = cache_owner.preview_cache.get(cache_key)
+    if cached:
+        return cached
+
+    if Image is not None and ImageTk is not None and ImageEnhance is not None:
+        image = Image.open(path).convert("RGB")
+        source_size = image.size
+        image = ImageEnhance.Contrast(image).enhance(float(contrast))
+        image.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
+        photo = ImageTk.PhotoImage(image)
+    else:
+        photo = tk.PhotoImage(file=path)
+        source_size = (photo.width(), photo.height())
+        shrink = max(1, int(max(photo.width() / max_w, photo.height() / max_h)))
+        if shrink > 1:
+            photo = photo.subsample(shrink, shrink)
+
+    cached = (photo, source_size)
+    cache_owner.preview_cache[cache_key] = cached
+    cache_owner.preview_cache_order.append(cache_key)
+    while len(cache_owner.preview_cache_order) > PREVIEW_CACHE_LIMIT:
+        old_key = cache_owner.preview_cache_order.pop(0)
+        cache_owner.preview_cache.pop(old_key, None)
+    return cached
 
 
 class InfoButton(tk.Canvas):
@@ -131,14 +197,24 @@ class InfoButton(tk.Canvas):
 class ProgramLauncher:
     def __init__(self, root):
         self.root = root
+        init_t0 = time.perf_counter()
         self.root.title(APP_TITLE)
         self.root.geometry("900x560")
         self.root.minsize(760, 480)
+        log_startup(f"Launcher basic window setup in {time.perf_counter() - init_t0:.3f}s")
+        step_t0 = time.perf_counter()
         self._load_theme()
+        log_startup(f"Launcher theme loaded in {time.perf_counter() - step_t0:.3f}s")
+        step_t0 = time.perf_counter()
         self.show_home()
-        self.root.after(150, self.show_window)
+        log_startup(f"Launcher home built in {time.perf_counter() - step_t0:.3f}s")
+        step_t0 = time.perf_counter()
+        self.show_window()
+        log_startup(f"Launcher window shown in {time.perf_counter() - step_t0:.3f}s")
 
     def _load_theme(self):
+        if not USE_AZURE_THEME:
+            return
         try:
             self.root.tk.call("source", os.path.join(PROJECT_DIR, "azure.tcl"))
             self.root.tk.call("set_theme", "light")
@@ -150,15 +226,12 @@ class ProgramLauncher:
             child.destroy()
 
     def show_window(self):
-        self.root.update_idletasks()
         width = min(900, max(760, self.root.winfo_screenwidth() - 160))
         height = min(560, max(480, self.root.winfo_screenheight() - 160))
         x = max(20, (self.root.winfo_screenwidth() - width) // 2)
         y = max(20, (self.root.winfo_screenheight() - height) // 2)
         self.root.geometry(f"{width}x{height}+{x}+{y}")
         self.root.deiconify()
-        self.root.lift()
-        self.root.focus_force()
 
     def show_home(self):
         self.clear_root()
@@ -213,7 +286,7 @@ class ProgramLauncher:
 class GrowthAnalyzerGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title(SWIM_TITLE)
+        self.root.title(f"{APP_TITLE} - {SWIM_TITLE}")
         self.root.geometry("1240x780")
         self.root.minsize(980, 640)
 
@@ -221,9 +294,12 @@ class GrowthAnalyzerGUI:
         self.row_paths = {}
         self.results_by_path = {}
         self.event_queue = queue.Queue()
+        self.closed = False
         self.batch_thread = None
         self.preview_thread = None
         self.preview_after_id = None
+        self.preview_preload_after_id = None
+        self.preview_preload_queue = []
         self.preview_generation = 0
         self.preview_pending = False
         self.preview_path = None
@@ -232,6 +308,8 @@ class GrowthAnalyzerGUI:
         self.preview_image_item = None
         self.preview_image_box = None
         self.preview_source_size = None
+        self.preview_cache = {}
+        self.preview_cache_order = []
         self.current_preview_result = None
         self.manual_edit_enabled = False
         self.manual_drag_start = None
@@ -255,6 +333,8 @@ class GrowthAnalyzerGUI:
         self.root.after(100, self._drain_event_queue)
 
     def _load_theme(self):
+        if not USE_AZURE_THEME:
+            return
         try:
             self.root.tk.call("source", os.path.join(PROJECT_DIR, "azure.tcl"))
             self.root.tk.call("set_theme", "light")
@@ -328,25 +408,26 @@ class GrowthAnalyzerGUI:
         self.root.after(800, lambda: self.root.attributes("-topmost", False))
 
     def _build_controls(self, parent):
-        ttk.Label(parent, text=SWIM_TITLE, font=("Helvetica", 18, "bold")).grid(row=0, column=0, sticky="w")
-        ttk.Label(parent, text="Tune one preview, apply settings to the batch").grid(row=1, column=0, sticky="w", pady=(2, 18))
+        ttk.Button(parent, text="Back to Title Page", command=self.return_to_title_page).grid(row=0, column=0, sticky="ew", pady=(0, 14))
+        ttk.Label(parent, text=SWIM_TITLE, font=("Helvetica", 18, "bold")).grid(row=1, column=0, sticky="w")
+        ttk.Label(parent, text="Tune one preview, apply settings to the batch").grid(row=2, column=0, sticky="w", pady=(2, 18))
 
         buttons = ttk.Frame(parent)
-        buttons.grid(row=2, column=0, sticky="ew")
+        buttons.grid(row=3, column=0, sticky="ew")
         buttons.columnconfigure((0, 1), weight=1)
         ttk.Button(buttons, text="Add Images", command=self.add_images).grid(row=0, column=0, sticky="ew", padx=(0, 5))
         ttk.Button(buttons, text="Add Folder", command=self.add_folder).grid(row=0, column=1, sticky="ew", padx=(5, 0))
-        ttk.Button(parent, text="Clear List", command=self.clear_images).grid(row=3, column=0, sticky="ew", pady=(8, 16))
+        ttk.Button(parent, text="Clear List", command=self.clear_images).grid(row=4, column=0, sticky="ew", pady=(8, 16))
 
         output = ttk.LabelFrame(parent, text="Output", padding=12)
-        output.grid(row=4, column=0, sticky="ew", pady=(0, 14))
+        output.grid(row=5, column=0, sticky="ew", pady=(0, 14))
         output.columnconfigure(0, weight=1)
         ttk.Entry(output, textvariable=self.output_dir_var).grid(row=0, column=0, sticky="ew", padx=(0, 8))
         ttk.Button(output, text="Browse", command=self.choose_output_dir).grid(row=0, column=1)
         ttk.Button(output, text="Show Results Folder", command=self.open_output_dir).grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
 
         settings = ttk.LabelFrame(parent, text="Auto Analysis Settings", padding=12)
-        settings.grid(row=5, column=0, sticky="ew")
+        settings.grid(row=6, column=0, sticky="ew")
         settings.columnconfigure(0, weight=1)
         settings.columnconfigure(1, weight=0)
         self._spin(settings, 0, "Plate diameter (cm)", self.plate_diameter_var, 1.0, 30.0, 0.1)
@@ -354,16 +435,16 @@ class GrowthAnalyzerGUI:
         self._preview_contrast(settings, 5)
 
         self.run_button = ttk.Button(parent, text="Run Batch Analysis", command=self.start_batch_analysis, style="Accent.TButton")
-        self.run_button.grid(row=6, column=0, sticky="ew", pady=(18, 8), ipady=4)
+        self.run_button.grid(row=7, column=0, sticky="ew", pady=(18, 8), ipady=4)
         self.manual_edit_button = ttk.Button(parent, text="Adjust Shape Manually", command=self.toggle_manual_edit, state="disabled")
-        self.manual_edit_button.grid(row=7, column=0, sticky="ew", pady=(0, 8))
+        self.manual_edit_button.grid(row=8, column=0, sticky="ew", pady=(0, 8))
         self.undo_manual_button = ttk.Button(parent, text="Undo Manual Changes", command=self.undo_manual_changes, state="disabled")
-        self.undo_manual_button.grid(row=8, column=0, sticky="ew", pady=(0, 8))
+        self.undo_manual_button.grid(row=9, column=0, sticky="ew", pady=(0, 8))
 
         self.progress = ttk.Progressbar(parent, mode="determinate")
-        self.progress.grid(row=9, column=0, sticky="ew", pady=(16, 6))
+        self.progress.grid(row=10, column=0, sticky="ew", pady=(16, 6))
         self.status_label = ttk.Label(parent, text="", wraplength=300)
-        self.status_label.grid(row=10, column=0, sticky="ew")
+        self.status_label.grid(row=11, column=0, sticky="ew")
 
     def _spin(self, parent, row, label, variable, from_, to, increment):
         ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=(0, 4))
@@ -533,6 +614,8 @@ class GrowthAnalyzerGUI:
         self.preview_path = None
         self.preview_display_path = None
         self.preview_photo = None
+        self.preview_cache.clear()
+        self.preview_cache_order.clear()
         self.preview_generation += 1
         for item in self.table.get_children():
             self.table.delete(item)
@@ -607,6 +690,8 @@ class GrowthAnalyzerGUI:
         return run_analysis(image_path, self.output_dir_var.get(), output_filename, settings)
 
     def _drain_event_queue(self):
+        if self.closed:
+            return
         try:
             while True:
                 event = self.event_queue.get_nowait()
@@ -794,20 +879,13 @@ class GrowthAnalyzerGUI:
         try:
             max_w = max(360, self.preview_canvas.winfo_width() - 20)
             max_h = max(280, self.preview_canvas.winfo_height() - 20)
-            if Image is not None and ImageTk is not None and ImageEnhance is not None:
-                image = Image.open(path).convert("RGB")
-                self.preview_source_size = image.size
-                contrast = float(self.preview_contrast_var.get())
-                image = ImageEnhance.Contrast(image).enhance(contrast)
-                image.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
-                self.preview_photo = ImageTk.PhotoImage(image)
-            else:
-                photo = tk.PhotoImage(file=path)
-                self.preview_source_size = (photo.width(), photo.height())
-                shrink = max(1, int(max(photo.width() / max_w, photo.height() / max_h)))
-                if shrink > 1:
-                    photo = photo.subsample(shrink, shrink)
-                self.preview_photo = photo
+            self.preview_photo, self.preview_source_size = load_preview_photo(
+                self,
+                path,
+                max_w,
+                max_h,
+                float(self.preview_contrast_var.get()),
+            )
             self.preview_canvas.delete("all")
             canvas_w = max(1, self.preview_canvas.winfo_width())
             canvas_h = max(1, self.preview_canvas.winfo_height())
@@ -822,6 +900,39 @@ class GrowthAnalyzerGUI:
         except (tk.TclError, OSError, ValueError) as exc:
             self.preview_canvas.delete("all")
             self.preview_canvas.create_text(20, 20, text=f"Preview unavailable: {exc}", anchor="nw", fill="#5f6b7a")
+
+    def start_preview_preload(self):
+        if self.preview_preload_after_id:
+            self.root.after_cancel(self.preview_preload_after_id)
+            self.preview_preload_after_id = None
+        self.preview_preload_queue = [
+            result.get("Output_Path")
+            for path in self.image_paths
+            for result in [self.results_by_path.get(path)]
+            if result and result.get("Output_Path") and os.path.exists(result.get("Output_Path"))
+        ]
+        if self.preview_preload_queue:
+            self.preview_preload_after_id = self.root.after(100, self.preload_next_preview)
+
+    def preload_next_preview(self):
+        self.preview_preload_after_id = None
+        if self.closed or not self.preview_preload_queue:
+            return
+        path = self.preview_preload_queue.pop(0)
+        try:
+            max_w = max(360, self.preview_canvas.winfo_width() - 20)
+            max_h = max(280, self.preview_canvas.winfo_height() - 20)
+            load_preview_photo(
+                self,
+                path,
+                max_w,
+                max_h,
+                float(self.preview_contrast_var.get()),
+            )
+        except (tk.TclError, OSError, ValueError):
+            pass
+        if self.preview_preload_queue:
+            self.preview_preload_after_id = self.root.after(15, self.preload_next_preview)
 
     def settings(self):
         return {
@@ -1103,6 +1214,7 @@ class GrowthAnalyzerGUI:
         self._set_status("Manual measurement saved for the selected image.")
 
     def save_manual_annotation(self, left, top, right, bottom, max_cm, min_cm):
+        ensure_pil_loaded()
         if Image is None or ImageDraw is None:
             return ""
         try:
@@ -1198,6 +1310,19 @@ class GrowthAnalyzerGUI:
         os.makedirs(self.output_dir_var.get(), exist_ok=True)
         subprocess.run(["open", self.output_dir_var.get()], check=False)
 
+    def return_to_title_page(self):
+        if self.is_busy():
+            messagebox.showinfo("Analysis Running", "Wait for the current batch to finish before returning to the title page.")
+            return
+        self.closed = True
+        if self.preview_after_id:
+            self.root.after_cancel(self.preview_after_id)
+            self.preview_after_id = None
+        if self.preview_preload_after_id:
+            self.root.after_cancel(self.preview_preload_after_id)
+            self.preview_preload_after_id = None
+        show_title_page(self.root)
+
     def is_busy(self):
         batch_busy = self.batch_thread is not None and self.batch_thread.is_alive()
         return batch_busy
@@ -1209,7 +1334,7 @@ class GrowthAnalyzerGUI:
 class ColonyCounterGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title(COLONY_TITLE)
+        self.root.title(f"{APP_TITLE} - {COLONY_TITLE}")
         self.root.geometry("1240x780")
         self.root.minsize(980, 640)
 
@@ -1217,15 +1342,19 @@ class ColonyCounterGUI:
         self.row_paths = {}
         self.results_by_path = {}
         self.event_queue = queue.Queue()
+        self.closed = False
         self.batch_thread = None
         self.preview_thread = None
         self.preview_after_id = None
+        self.preview_preload_after_id = None
+        self.preview_preload_queue = []
         self.preview_generation = 0
         self.preview_pending = False
         self.preview_path = None
         self.preview_display_path = None
         self.preview_photo = None
-        self.manual_counts = {}
+        self.preview_cache = {}
+        self.preview_cache_order = []
 
         self.output_dir_var = tk.StringVar(value=COLONY_OUTPUT_DIR)
         self.sensitivity_var = tk.DoubleVar(value=COLONY_DEFAULTS["sensitivity"])
@@ -1243,6 +1372,8 @@ class ColonyCounterGUI:
         self.root.after(100, self._drain_event_queue)
 
     def _load_theme(self):
+        if not USE_AZURE_THEME:
+            return
         try:
             self.root.tk.call("source", os.path.join(PROJECT_DIR, "azure.tcl"))
             self.root.tk.call("set_theme", "light")
@@ -1295,33 +1426,23 @@ class ColonyCounterGUI:
         self.root.focus_force()
 
     def _build_controls(self, parent):
-        ttk.Label(parent, text=COLONY_TITLE, font=("Helvetica", 18, "bold")).grid(row=0, column=0, sticky="w")
-        ttk.Label(parent, text="Tune one preview, apply settings to the batch").grid(row=1, column=0, sticky="w", pady=(2, 18))
+        ttk.Button(parent, text="Back to Title Page", command=self.return_to_title_page).grid(row=0, column=0, sticky="ew", pady=(0, 14))
+        ttk.Label(parent, text=COLONY_TITLE, font=("Helvetica", 18, "bold")).grid(row=1, column=0, sticky="w")
+        ttk.Label(parent, text="Add images, count colonies with the trained model").grid(row=2, column=0, sticky="w", pady=(2, 18))
 
         buttons = ttk.Frame(parent)
-        buttons.grid(row=2, column=0, sticky="ew")
+        buttons.grid(row=3, column=0, sticky="ew")
         buttons.columnconfigure((0, 1), weight=1)
         ttk.Button(buttons, text="Add Images", command=self.add_images).grid(row=0, column=0, sticky="ew", padx=(0, 5))
         ttk.Button(buttons, text="Add Folder", command=self.add_folder).grid(row=0, column=1, sticky="ew", padx=(5, 0))
-        ttk.Button(parent, text="Clear List", command=self.clear_images).grid(row=3, column=0, sticky="ew", pady=(8, 16))
+        ttk.Button(parent, text="Clear List", command=self.clear_images).grid(row=4, column=0, sticky="ew", pady=(8, 16))
 
         output = ttk.LabelFrame(parent, text="Output", padding=12)
-        output.grid(row=4, column=0, sticky="ew", pady=(0, 14))
+        output.grid(row=5, column=0, sticky="ew", pady=(0, 14))
         output.columnconfigure(0, weight=1)
         ttk.Entry(output, textvariable=self.output_dir_var).grid(row=0, column=0, sticky="ew", padx=(0, 8))
         ttk.Button(output, text="Browse", command=self.choose_output_dir).grid(row=0, column=1)
         ttk.Button(output, text="Show Results Folder", command=self.open_output_dir).grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
-        ttk.Button(output, text="Load Manual Counts CSV", command=self.load_manual_counts_csv).grid(row=2, column=0, columnspan=2, sticky="ew", pady=(8, 0))
-
-        settings = ttk.LabelFrame(parent, text="Colony Detection Settings", padding=12)
-        settings.grid(row=5, column=0, sticky="ew")
-        settings.columnconfigure(0, weight=1)
-        settings.columnconfigure(1, weight=0)
-        self._colony_sensitivity(settings, 0)
-        self._colony_size(settings, 3)
-        self._split_touching(settings, 5)
-        self._save_diagnostics(settings, 6)
-        self._preview_contrast(settings, 8)
 
         self.run_button = ttk.Button(parent, text="Run Batch Count", command=self.start_batch_analysis, style="Accent.TButton")
         self.run_button.grid(row=6, column=0, sticky="ew", pady=(18, 8), ipady=4)
@@ -1439,10 +1560,10 @@ class ColonyCounterGUI:
         frame.grid(row=0, column=0, sticky="nsew")
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(0, weight=1)
-        columns = ("file", "status", "count", "manual", "error", "source")
+        columns = ("file", "status", "count", "source")
         self.table = ttk.Treeview(frame, columns=columns, show="headings", selectmode="browse")
-        headings = {"file": "File", "status": "Status", "count": "Colonies", "manual": "Manual", "error": "Error", "source": "Source"}
-        widths = {"file": 240, "status": 130, "count": 170, "manual": 90, "error": 80, "source": 420}
+        headings = {"file": "File", "status": "Status", "count": "Colonies", "source": "Source"}
+        widths = {"file": 260, "status": 130, "count": 170, "source": 520}
         for column in columns:
             self.table.heading(column, text=headings[column])
             self.table.column(column, width=widths[column], anchor="w" if column in ("file", "source") else "center")
@@ -1476,7 +1597,7 @@ class ColonyCounterGUI:
             self.image_paths.append(path)
             item_id = str(len(self.image_paths) - 1)
             self.row_paths[item_id] = path
-            self.table.insert("", "end", iid=item_id, values=(os.path.basename(path), "Ready", "", self.manual_count_for(path), "", path))
+            self.table.insert("", "end", iid=item_id, values=(os.path.basename(path), "Ready", "", path))
             added += 1
         if added:
             if not self.table.selection():
@@ -1497,6 +1618,8 @@ class ColonyCounterGUI:
         self.preview_path = None
         self.preview_display_path = None
         self.preview_photo = None
+        self.preview_cache.clear()
+        self.preview_cache_order.clear()
         self.preview_generation += 1
         for item in self.table.get_children():
             self.table.delete(item)
@@ -1512,38 +1635,6 @@ class ColonyCounterGUI:
         folder = filedialog.askdirectory(title="Select output folder", initialdir=self.output_dir_var.get())
         if folder:
             self.output_dir_var.set(folder)
-
-    def load_manual_counts_csv(self):
-        path = filedialog.askopenfilename(
-            title="Select manual counts CSV",
-            filetypes=(("CSV files", "*.csv"), ("All files", "*.*")),
-        )
-        if not path:
-            return
-        loaded = 0
-        with open(path, newline="", encoding="utf-8-sig") as csv_file:
-            reader = csv.DictReader(csv_file)
-            for row in reader:
-                filename = row.get("filename") or row.get("Filename") or row.get("file") or row.get("File")
-                count = row.get("manual_count") or row.get("Manual_Count") or row.get("manual") or row.get("Manual")
-                if not filename or count in (None, ""):
-                    continue
-                try:
-                    manual_count = int(float(count))
-                except ValueError:
-                    continue
-                self.manual_counts[filename] = manual_count
-                self.manual_counts[os.path.basename(filename)] = manual_count
-                loaded += 1
-        for item_id, image_path in self.row_paths.items():
-            result = self.results_by_path.get(image_path)
-            if result:
-                self.apply_manual_count_to_result(result)
-                self.update_row(int(item_id), result.get("Status", ""), self.format_colony_count(result), result.get("Manual_Count", ""), result.get("Count_Error", ""))
-            else:
-                self.update_row(int(item_id), manual=self.manual_count_for(image_path), error="")
-        self.write_current_csv()
-        self._set_status(f"Loaded {loaded} manual count row(s). CSV columns can be filename,manual_count.")
 
     def start_batch_analysis(self):
         if self.is_busy():
@@ -1570,7 +1661,6 @@ class ColonyCounterGUI:
             if result:
                 result["Source_Path"] = image_path
                 result["Status"] = "Too Many To Count" if result.get("Too_Many_To_Count") else "Success"
-                self.apply_manual_count_to_result(result)
                 self.event_queue.put(("result", index, result))
             else:
                 self.event_queue.put(("status", index, "Failed"))
@@ -1580,7 +1670,8 @@ class ColonyCounterGUI:
     def _count_path(self, index, image_path, settings, output_dir, output_filename, save_diagnostics=False):
         os.makedirs(output_dir, exist_ok=True)
         diagnostic_dir = os.path.join(output_dir, "diagnostics", os.path.splitext(os.path.basename(image_path))[0])
-        return count_colonies.process_image(
+        colony_backend = get_colony_backend()
+        return colony_backend.process_image(
             image_path,
             output_dir,
             sensitivity=settings["sensitivity"],
@@ -1593,6 +1684,8 @@ class ColonyCounterGUI:
         )
 
     def _drain_event_queue(self):
+        if self.closed:
+            return
         try:
             while True:
                 event = self.event_queue.get_nowait()
@@ -1609,7 +1702,7 @@ class ColonyCounterGUI:
         elif kind == "result":
             _, index, result = event
             self.results_by_path[result["Source_Path"]] = result
-            self.update_row(index, result["Status"], self.format_colony_count(result), result.get("Manual_Count", ""), result.get("Count_Error", ""))
+            self.update_row(index, result["Status"], self.format_colony_count(result))
             if result["Source_Path"] == self.preview_path:
                 self.apply_preview_result(result)
             self.write_current_csv()
@@ -1620,6 +1713,7 @@ class ColonyCounterGUI:
             self.batch_thread = None
             self.run_button.state(["!disabled"])
             self._set_status(f"Finished: {len(self.results_by_path)} colony count result(s).")
+            self.start_preview_preload()
         elif kind == "preview_result":
             _, generation, result = event
             if generation == self.preview_generation:
@@ -1636,7 +1730,7 @@ class ColonyCounterGUI:
                     self.preview_pending = False
                     self.schedule_live_preview(delay=250)
 
-    def update_row(self, index, status=None, count="", manual=None, error=None):
+    def update_row(self, index, status=None, count=""):
         item_id = str(index)
         if not self.table.exists(item_id):
             return
@@ -1645,10 +1739,6 @@ class ColonyCounterGUI:
             values[1] = status
         if count != "":
             values[2] = count
-        if manual is not None:
-            values[3] = manual
-        if error is not None:
-            values[4] = error
         self.table.item(item_id, values=values)
 
     def on_row_selected(self, _event=None):
@@ -1726,7 +1816,6 @@ class ColonyCounterGUI:
         if result:
             result["Source_Path"] = image_path
             result["Status"] = "Preview"
-            self.apply_manual_count_to_result(result)
         self.event_queue.put(("preview_result", generation, result))
         self.event_queue.put(("preview_done", generation))
 
@@ -1734,10 +1823,7 @@ class ColonyCounterGUI:
         output_path = result.get("Output_Path")
         if output_path:
             self.load_preview_image(output_path)
-        manual = result.get("Manual_Count", "")
-        error = result.get("Count_Error", "")
-        suffix = f"   Manual: {manual}   Error: {error}" if manual != "" else ""
-        self.preview_result.config(text=f"Colonies: {self.format_colony_count(result)}{suffix}")
+        self.preview_result.config(text=f"Colonies: {self.format_colony_count(result)}")
 
     def load_preview_image(self, path):
         if not path or not os.path.exists(path):
@@ -1752,18 +1838,13 @@ class ColonyCounterGUI:
         try:
             max_w = max(360, self.preview_canvas.winfo_width() - 20)
             max_h = max(280, self.preview_canvas.winfo_height() - 20)
-            if Image is not None and ImageTk is not None and ImageEnhance is not None:
-                image = Image.open(path).convert("RGB")
-                contrast = float(self.preview_contrast_var.get())
-                image = ImageEnhance.Contrast(image).enhance(contrast)
-                image.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
-                self.preview_photo = ImageTk.PhotoImage(image)
-            else:
-                photo = tk.PhotoImage(file=path)
-                shrink = max(1, int(max(photo.width() / max_w, photo.height() / max_h)))
-                if shrink > 1:
-                    photo = photo.subsample(shrink, shrink)
-                self.preview_photo = photo
+            self.preview_photo, _source_size = load_preview_photo(
+                self,
+                path,
+                max_w,
+                max_h,
+                float(self.preview_contrast_var.get()),
+            )
             self.preview_canvas.delete("all")
             canvas_w = max(1, self.preview_canvas.winfo_width())
             canvas_h = max(1, self.preview_canvas.winfo_height())
@@ -1774,6 +1855,39 @@ class ColonyCounterGUI:
             self.preview_canvas.delete("all")
             self.preview_canvas.create_text(20, 20, text=f"Preview unavailable: {exc}", anchor="nw", fill="#5f6b7a")
 
+    def start_preview_preload(self):
+        if self.preview_preload_after_id:
+            self.root.after_cancel(self.preview_preload_after_id)
+            self.preview_preload_after_id = None
+        self.preview_preload_queue = [
+            result.get("Output_Path")
+            for path in self.image_paths
+            for result in [self.results_by_path.get(path)]
+            if result and result.get("Output_Path") and os.path.exists(result.get("Output_Path"))
+        ]
+        if self.preview_preload_queue:
+            self.preview_preload_after_id = self.root.after(100, self.preload_next_preview)
+
+    def preload_next_preview(self):
+        self.preview_preload_after_id = None
+        if self.closed or not self.preview_preload_queue:
+            return
+        path = self.preview_preload_queue.pop(0)
+        try:
+            max_w = max(360, self.preview_canvas.winfo_width() - 20)
+            max_h = max(280, self.preview_canvas.winfo_height() - 20)
+            load_preview_photo(
+                self,
+                path,
+                max_w,
+                max_h,
+                float(self.preview_contrast_var.get()),
+            )
+        except (tk.TclError, OSError, ValueError):
+            pass
+        if self.preview_preload_queue:
+            self.preview_preload_after_id = self.root.after(15, self.preload_next_preview)
+
     def settings(self):
         return {
             "sensitivity": float(self.sensitivity_var.get()),
@@ -1782,32 +1896,9 @@ class ColonyCounterGUI:
             "save_diagnostics": bool(self.save_diagnostics_var.get()),
         }
 
-    def manual_count_for(self, image_path):
-        return self.manual_counts.get(image_path, self.manual_counts.get(os.path.basename(image_path), ""))
-
-    def apply_manual_count_to_result(self, result):
-        manual_count = self.manual_count_for(result.get("Source_Path", result.get("Filename", "")))
-        if manual_count == "":
-            manual_count = self.manual_count_for(result.get("Filename", ""))
-        if manual_count == "":
-            result["Manual_Count"] = ""
-            result["Count_Error"] = ""
-            result["Percent_Error"] = ""
-            return
-        if result.get("Too_Many_To_Count"):
-            result["Manual_Count"] = int(manual_count)
-            result["Count_Error"] = ""
-            result["Percent_Error"] = ""
-            return
-        predicted = int(result.get("Colony_Count", 0))
-        error = predicted - int(manual_count)
-        result["Manual_Count"] = int(manual_count)
-        result["Count_Error"] = error
-        result["Percent_Error"] = round((abs(error) / int(manual_count)) * 100, 2) if int(manual_count) else ""
-
     def format_colony_count(self, result):
         if result.get("Too_Many_To_Count"):
-            limit = result.get("Too_Many_To_Count_Limit", count_colonies.TOO_MANY_TO_COUNT_LIMIT)
+            limit = result.get("Too_Many_To_Count_Limit", COLONY_TOO_MANY_TO_COUNT_LIMIT)
             return f"Too many to count (>{limit})"
         return result.get("Colony_Count", "")
 
@@ -1819,6 +1910,19 @@ class ColonyCounterGUI:
     def open_output_dir(self):
         os.makedirs(self.output_dir_var.get(), exist_ok=True)
         subprocess.run(["open", self.output_dir_var.get()], check=False)
+
+    def return_to_title_page(self):
+        if self.is_busy():
+            messagebox.showinfo("Counting Running", "Wait for the current batch to finish before returning to the title page.")
+            return
+        self.closed = True
+        if self.preview_after_id:
+            self.root.after_cancel(self.preview_after_id)
+            self.preview_after_id = None
+        if self.preview_preload_after_id:
+            self.root.after_cancel(self.preview_preload_after_id)
+            self.preview_preload_after_id = None
+        show_title_page(self.root)
 
     def is_busy(self):
         return self.batch_thread is not None and self.batch_thread.is_alive()
@@ -1905,9 +2009,6 @@ def write_colony_csv(path, rows):
         "Too_Many_To_Count",
         "Too_Many_To_Count_Limit",
         "Count_Stopped_Early",
-        "Manual_Count",
-        "Count_Error",
-        "Percent_Error",
         "Detection_Sensitivity",
         "Colony_Size",
         "Split_Touching",
@@ -1932,10 +2033,13 @@ def write_colony_csv(path, rows):
 
 
 if __name__ == "__main__":
+    startup_t0 = time.perf_counter()
     log_startup(f"Starting Tk UI with {sys.executable}")
+    step_t0 = time.perf_counter()
     root = tk.Tk()
-    log_startup("Tk root created")
+    log_startup(f"Tk root created in {time.perf_counter() - step_t0:.3f}s")
+    step_t0 = time.perf_counter()
     app = ProgramLauncher(root)
-    log_startup("GUI built; entering mainloop")
+    log_startup(f"GUI built in {time.perf_counter() - step_t0:.3f}s; entering mainloop after {time.perf_counter() - startup_t0:.3f}s")
     root.mainloop()
     log_startup("Mainloop exited")

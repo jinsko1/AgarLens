@@ -1,0 +1,30 @@
+# Python/cache artifacts
+__pycache__/
+*.py[cod]
+.Python
+
+# Local environments
+.venv/
+venv/
+env/
+
+# Runtime logs
+gui_startup.log
+*.log
+
+# Generated analysis outputs
+output/
+colony_output/
+yolo_test_output/
+
+# YOLO training/model artifacts kept local by default
+runs/
+*.pt
+*.onnx
+*.engine
+*.torchscript
+
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/
