@@ -577,3 +577,150 @@ GUI built; entering mainloop
 Starting Tk UI with /usr/local/bin/python3
 Tk root created
 GUI built; entering mainloop
+
+--- Launch Fri May  8 19:53:56 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+
+--- Launch Fri May  8 20:01:31 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+
+--- Launch Fri May  8 20:08:31 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+
+--- Launch Fri May  8 20:20:50 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+Mainloop exited
+
+--- Launch Sat May  9 21:36:36 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+Mainloop exited
+
+Processing WT(1)10^-2.jpg...
+  - Found 143 valid colonies after all filters.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/live_preview/preview_WT(1)10^-2_colonies_counted.png
+
+Processing WT(1)10^-2.jpg...
+  - Found 143 valid colonies after all filters.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/live_preview/preview_WT(1)10^-2_colonies_counted.png
+
+Processing WT(2)10^-2.jpg...
+  - Found 406 valid colonies after all filters.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/live_preview/preview_WT(2)10^-2_colonies_counted.png
+
+Processing WT(3)10^-2.jpg...
+  - Found 351 valid colonies after all filters.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/live_preview/preview_WT(3)10^-2_colonies_counted.png
+
+Processing fur(3)10^-2.jpg.jpg...
+  - Found 227 valid colonies after all filters.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/live_preview/preview_fur(3)10^-2.jpg_colonies_counted.png
+
+Processing photo-1687180109576-663e3e8df7bd.jpg...
+  - Found 2367 valid colonies after all filters.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/live_preview/preview_photo-1687180109576-663e3e8df7bd_colonies_counted.png
+
+Processing tonB(2)10^-3.jpg...
+  - Found 1185 valid colonies after all filters.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/live_preview/preview_tonB(2)10^-3_colonies_counted.png
+
+Processing tonB(3)10^-2.jpg...
+  - Found 494 valid colonies after all filters.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/live_preview/preview_tonB(3)10^-2_colonies_counted.png
+
+Processing tonB(2)10^-3.jpg...
+  - Found 1185 valid colonies after all filters.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/live_preview/preview_tonB(2)10^-3_colonies_counted.png
+
+Processing tonB(3)10^-2.jpg...
+  - Found 494 valid colonies after all filters.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/live_preview/preview_tonB(3)10^-2_colonies_counted.png
+
+Processing tonB(2)10^-3.jpg...
+  - Found 1185 valid colonies after all filters.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/live_preview/preview_tonB(2)10^-3_colonies_counted.png
+
+Processing photo-1687180109576-663e3e8df7bd.jpg...
+  - Found 2367 valid colonies after all filters.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/live_preview/preview_photo-1687180109576-663e3e8df7bd_colonies_counted.png
+
+Processing WT(1)10^-2.jpg...
+  - Found 143 valid colonies after all filters.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/live_preview/preview_WT(1)10^-2_colonies_counted.png
+
+--- Launch Sat May  9 22:23:28 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+Mainloop exited
+
+--- Launch Sat May  9 22:23:45 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+Mainloop exited
+
+--- Launch Sat May  9 22:26:46 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+Mainloop exited
+
+Processing WT(1)10^-2.jpg...
+  - Found 217 valid colonies after all filters.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/live_preview/preview_WT(1)10^-2_colonies_counted.png
+
+Processing WT(1)10^-2.jpg...
+  - Found 217 valid colonies after all filters.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/WT(1)10^-2_colonies_counted.png
+
+Processing WT(2)10^-2.jpg...
+  - Found 323 valid colonies after all filters.
+  - Marked as too many to count because it is above 300.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/WT(2)10^-2_colonies_counted.png
+
+Processing WT(3)10^-2.jpg...
+
+Processing WT(3)10^-2.jpg...
+  - Found 606 valid colonies after all filters.
+  - Marked as too many to count because it is above 300.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/WT(3)10^-2_colonies_counted.png
+
+Processing conc1_high_10^-2.jpg...
+  - Found 606 valid colonies after all filters.
+  - Marked as too many to count because it is above 300.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/live_preview/preview_WT(3)10^-2_colonies_counted.png
+  - Found 1404 valid colonies after all filters.
+  - Marked as too many to count because it is above 300.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc1_high_10^-2_colonies_counted.png
+
+Processing conc1_high_10^-3.jpg...
+
+Processing conc1_high_10^-3.jpg...
+  - Found 961 valid colonies after all filters.
+  - Marked as too many to count because it is above 300.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc1_high_10^-3_colonies_counted.png
+
+Processing conc1_high_10^-4.jpg...
+  - Found 152 valid colonies after all filters.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc1_high_10^-4_colonies_counted.png
+
+Processing conc1_low_10^-2.jpg...
+  - Found 961 valid colonies after all filters.
+  - Marked as too many to count because it is above 300.
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/live_preview/preview_conc1_high_10^-3_colonies_counted.png
+
+Processing conc1_low_10^-2.jpg...
+
+--- Launch Sat May  9 22:35:02 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created

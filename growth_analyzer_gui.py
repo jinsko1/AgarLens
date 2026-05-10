@@ -54,6 +54,10 @@ SETTING_HELP = {
     "Minimum solidity": "How round and filled-in a colony candidate must be. Higher values reject irregular scratches or artifacts.",
     "Minimum colony area": "Smallest spot, in pixels, that can count as a colony. Raise this to ignore tiny specks.",
     "Maximum colony area": "Largest spot, in pixels, that can count as one colony. Lower this to reject large blobs or plate artifacts.",
+    "Colony detection sensitivity": "Controls how readily the app accepts faint colonies after correcting each plate's background. Move left to avoid noise. Move right to catch fainter colonies.",
+    "Colony size": "Choose the expected colony size range. Mixed is the broadest option and is useful when colonies vary a lot.",
+    "Split touching colonies": "When on, the app tries to separate colonies that are touching each other before counting.",
+    "Save diagnostics": "Saves intermediate images for each colony-count batch result so you can see plate masking, thresholding, components, local maxima, and final overlay.",
 }
 
 DEFAULTS = {
@@ -63,11 +67,10 @@ DEFAULTS = {
 }
 
 COLONY_DEFAULTS = {
-    "binary_threshold": float(count_colonies.BINARY_THRESHOLD),
-    "erosion_iterations": float(count_colonies.EROSION_ITERATIONS),
-    "min_solidity": float(count_colonies.MIN_SOLIDITY),
-    "min_colony_area": float(count_colonies.MIN_COLONY_AREA),
-    "max_colony_area": float(count_colonies.MAX_COLONY_AREA),
+    "sensitivity": 50.0,
+    "colony_size": "Medium",
+    "split_touching": True,
+    "save_diagnostics": False,
     "preview_contrast": 1.0,
 }
 
@@ -1222,13 +1225,13 @@ class ColonyCounterGUI:
         self.preview_path = None
         self.preview_display_path = None
         self.preview_photo = None
+        self.manual_counts = {}
 
         self.output_dir_var = tk.StringVar(value=COLONY_OUTPUT_DIR)
-        self.binary_threshold_var = tk.DoubleVar(value=COLONY_DEFAULTS["binary_threshold"])
-        self.erosion_iterations_var = tk.DoubleVar(value=COLONY_DEFAULTS["erosion_iterations"])
-        self.min_solidity_var = tk.DoubleVar(value=COLONY_DEFAULTS["min_solidity"])
-        self.min_colony_area_var = tk.DoubleVar(value=COLONY_DEFAULTS["min_colony_area"])
-        self.max_colony_area_var = tk.DoubleVar(value=COLONY_DEFAULTS["max_colony_area"])
+        self.sensitivity_var = tk.DoubleVar(value=COLONY_DEFAULTS["sensitivity"])
+        self.colony_size_var = tk.StringVar(value=COLONY_DEFAULTS["colony_size"])
+        self.split_touching_var = tk.BooleanVar(value=COLONY_DEFAULTS["split_touching"])
+        self.save_diagnostics_var = tk.BooleanVar(value=COLONY_DEFAULTS["save_diagnostics"])
         self.preview_contrast_var = tk.DoubleVar(value=COLONY_DEFAULTS["preview_contrast"])
         self.preview_contrast_rounding = False
 
@@ -1308,17 +1311,17 @@ class ColonyCounterGUI:
         ttk.Entry(output, textvariable=self.output_dir_var).grid(row=0, column=0, sticky="ew", padx=(0, 8))
         ttk.Button(output, text="Browse", command=self.choose_output_dir).grid(row=0, column=1)
         ttk.Button(output, text="Show Results Folder", command=self.open_output_dir).grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+        ttk.Button(output, text="Load Manual Counts CSV", command=self.load_manual_counts_csv).grid(row=2, column=0, columnspan=2, sticky="ew", pady=(8, 0))
 
         settings = ttk.LabelFrame(parent, text="Colony Detection Settings", padding=12)
         settings.grid(row=5, column=0, sticky="ew")
         settings.columnconfigure(0, weight=1)
         settings.columnconfigure(1, weight=0)
-        self._spin(settings, 0, "Binary threshold", self.binary_threshold_var, 1, 255, 1)
-        self._spin(settings, 2, "Erosion passes", self.erosion_iterations_var, 0, 4, 1)
-        self._spin(settings, 4, "Minimum solidity", self.min_solidity_var, 0.1, 1.0, 0.01)
-        self._spin(settings, 6, "Minimum colony area", self.min_colony_area_var, 1, 2000, 1)
-        self._spin(settings, 8, "Maximum colony area", self.max_colony_area_var, 10, 20000, 10)
-        self._preview_contrast(settings, 10)
+        self._colony_sensitivity(settings, 0)
+        self._colony_size(settings, 3)
+        self._split_touching(settings, 5)
+        self._save_diagnostics(settings, 6)
+        self._preview_contrast(settings, 8)
 
         self.run_button = ttk.Button(parent, text="Run Batch Count", command=self.start_batch_analysis, style="Accent.TButton")
         self.run_button.grid(row=6, column=0, sticky="ew", pady=(18, 8), ipady=4)
@@ -1331,6 +1334,55 @@ class ColonyCounterGUI:
         ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=(0, 4))
         InfoButton(parent, SETTING_HELP.get(label, "This setting changes how colony detection is processed.")).grid(row=row, column=1, sticky="e", padx=(8, 0), pady=(0, 4))
         ttk.Spinbox(parent, textvariable=variable, from_=from_, to=to, increment=increment).grid(row=row + 1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+
+    def _colony_sensitivity(self, parent, row):
+        self.sensitivity_label_var = tk.StringVar()
+
+        def update_label(*_):
+            value = self.sensitivity_var.get()
+            if value < 25:
+                zone = "Conservative"
+            elif value > 75:
+                zone = "Sensitive"
+            else:
+                zone = "Balanced"
+            self.sensitivity_label_var.set(f"Detection sensitivity: {zone}")
+
+        self.sensitivity_var.trace_add("write", update_label)
+        update_label()
+        ttk.Label(parent, textvariable=self.sensitivity_label_var).grid(row=row, column=0, sticky="w", pady=(0, 4))
+        InfoButton(parent, SETTING_HELP["Colony detection sensitivity"]).grid(row=row, column=1, sticky="e", padx=(8, 0), pady=(0, 4))
+        sensitivity = ttk.Scale(parent, variable=self.sensitivity_var, from_=0, to=100)
+        self.bind_scale_click_to_value(sensitivity, self.sensitivity_var, 0, 100)
+        sensitivity.grid(row=row + 1, column=0, columnspan=2, sticky="ew", pady=(0, 2))
+        axis = ttk.Frame(parent)
+        axis.grid(row=row + 2, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        axis.columnconfigure(0, weight=1)
+        axis.columnconfigure(1, weight=1)
+        axis.columnconfigure(2, weight=1)
+        ttk.Label(axis, text="Conservative").grid(row=0, column=0, sticky="w")
+        ttk.Label(axis, text="Balanced").grid(row=0, column=1)
+        ttk.Label(axis, text="Sensitive").grid(row=0, column=2, sticky="e")
+
+    def _colony_size(self, parent, row):
+        ttk.Label(parent, text="Colony size").grid(row=row, column=0, sticky="w", pady=(0, 4))
+        InfoButton(parent, SETTING_HELP["Colony size"]).grid(row=row, column=1, sticky="e", padx=(8, 0), pady=(0, 4))
+        size_menu = ttk.Combobox(parent, textvariable=self.colony_size_var, state="readonly", values=("Small", "Medium", "Large", "Mixed"))
+        size_menu.grid(row=row + 1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+
+    def _split_touching(self, parent, row):
+        row_frame = ttk.Frame(parent)
+        row_frame.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+        row_frame.columnconfigure(0, weight=1)
+        ttk.Checkbutton(row_frame, text="Split touching colonies", variable=self.split_touching_var).grid(row=0, column=0, sticky="w")
+        InfoButton(row_frame, SETTING_HELP["Split touching colonies"]).grid(row=0, column=1, sticky="e")
+
+    def _save_diagnostics(self, parent, row):
+        row_frame = ttk.Frame(parent)
+        row_frame.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        row_frame.columnconfigure(0, weight=1)
+        ttk.Checkbutton(row_frame, text="Save diagnostic images", variable=self.save_diagnostics_var).grid(row=0, column=0, sticky="w")
+        InfoButton(row_frame, SETTING_HELP["Save diagnostics"]).grid(row=0, column=1, sticky="e")
 
     def _preview_contrast(self, parent, row):
         self.preview_contrast_label_var = tk.StringVar()
@@ -1387,10 +1439,10 @@ class ColonyCounterGUI:
         frame.grid(row=0, column=0, sticky="nsew")
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(0, weight=1)
-        columns = ("file", "status", "count", "source")
+        columns = ("file", "status", "count", "manual", "error", "source")
         self.table = ttk.Treeview(frame, columns=columns, show="headings", selectmode="browse")
-        headings = {"file": "File", "status": "Status", "count": "Colonies", "source": "Source"}
-        widths = {"file": 260, "status": 120, "count": 100, "source": 520}
+        headings = {"file": "File", "status": "Status", "count": "Colonies", "manual": "Manual", "error": "Error", "source": "Source"}
+        widths = {"file": 240, "status": 130, "count": 170, "manual": 90, "error": 80, "source": 420}
         for column in columns:
             self.table.heading(column, text=headings[column])
             self.table.column(column, width=widths[column], anchor="w" if column in ("file", "source") else "center")
@@ -1424,7 +1476,7 @@ class ColonyCounterGUI:
             self.image_paths.append(path)
             item_id = str(len(self.image_paths) - 1)
             self.row_paths[item_id] = path
-            self.table.insert("", "end", iid=item_id, values=(os.path.basename(path), "Ready", "", path))
+            self.table.insert("", "end", iid=item_id, values=(os.path.basename(path), "Ready", "", self.manual_count_for(path), "", path))
             added += 1
         if added:
             if not self.table.selection():
@@ -1461,6 +1513,38 @@ class ColonyCounterGUI:
         if folder:
             self.output_dir_var.set(folder)
 
+    def load_manual_counts_csv(self):
+        path = filedialog.askopenfilename(
+            title="Select manual counts CSV",
+            filetypes=(("CSV files", "*.csv"), ("All files", "*.*")),
+        )
+        if not path:
+            return
+        loaded = 0
+        with open(path, newline="", encoding="utf-8-sig") as csv_file:
+            reader = csv.DictReader(csv_file)
+            for row in reader:
+                filename = row.get("filename") or row.get("Filename") or row.get("file") or row.get("File")
+                count = row.get("manual_count") or row.get("Manual_Count") or row.get("manual") or row.get("Manual")
+                if not filename or count in (None, ""):
+                    continue
+                try:
+                    manual_count = int(float(count))
+                except ValueError:
+                    continue
+                self.manual_counts[filename] = manual_count
+                self.manual_counts[os.path.basename(filename)] = manual_count
+                loaded += 1
+        for item_id, image_path in self.row_paths.items():
+            result = self.results_by_path.get(image_path)
+            if result:
+                self.apply_manual_count_to_result(result)
+                self.update_row(int(item_id), result.get("Status", ""), self.format_colony_count(result), result.get("Manual_Count", ""), result.get("Count_Error", ""))
+            else:
+                self.update_row(int(item_id), manual=self.manual_count_for(image_path), error="")
+        self.write_current_csv()
+        self._set_status(f"Loaded {loaded} manual count row(s). CSV columns can be filename,manual_count.")
+
     def start_batch_analysis(self):
         if self.is_busy():
             return
@@ -1482,28 +1566,30 @@ class ColonyCounterGUI:
     def _batch_worker(self, settings):
         for index, image_path in enumerate(self.image_paths):
             self.event_queue.put(("status", index, "Running"))
-            result = self._count_path(index, image_path, settings, self.output_dir_var.get(), colony_output_filename_for(image_path))
+            result = self._count_path(index, image_path, settings, self.output_dir_var.get(), colony_output_filename_for(image_path), save_diagnostics=settings["save_diagnostics"])
             if result:
                 result["Source_Path"] = image_path
-                result["Status"] = "Success"
+                result["Status"] = "Too Many To Count" if result.get("Too_Many_To_Count") else "Success"
+                self.apply_manual_count_to_result(result)
                 self.event_queue.put(("result", index, result))
             else:
                 self.event_queue.put(("status", index, "Failed"))
             self.event_queue.put(("progress", index + 1))
         self.event_queue.put(("batch_done",))
 
-    def _count_path(self, index, image_path, settings, output_dir, output_filename):
+    def _count_path(self, index, image_path, settings, output_dir, output_filename, save_diagnostics=False):
         os.makedirs(output_dir, exist_ok=True)
+        diagnostic_dir = os.path.join(output_dir, "diagnostics", os.path.splitext(os.path.basename(image_path))[0])
         return count_colonies.process_image(
             image_path,
             output_dir,
-            binary_threshold=settings["binary_threshold"],
-            erosion_iterations=settings["erosion_iterations"],
-            min_solidity=settings["min_solidity"],
-            min_colony_area=settings["min_colony_area"],
-            max_colony_area=settings["max_colony_area"],
+            sensitivity=settings["sensitivity"],
+            colony_size=settings["colony_size"],
+            split_touching=settings["split_touching"],
             output_filename=output_filename,
             return_details=True,
+            save_diagnostics=save_diagnostics,
+            diagnostic_dir=diagnostic_dir,
         )
 
     def _drain_event_queue(self):
@@ -1523,7 +1609,7 @@ class ColonyCounterGUI:
         elif kind == "result":
             _, index, result = event
             self.results_by_path[result["Source_Path"]] = result
-            self.update_row(index, result["Status"], result["Colony_Count"])
+            self.update_row(index, result["Status"], self.format_colony_count(result), result.get("Manual_Count", ""), result.get("Count_Error", ""))
             if result["Source_Path"] == self.preview_path:
                 self.apply_preview_result(result)
             self.write_current_csv()
@@ -1550,14 +1636,19 @@ class ColonyCounterGUI:
                     self.preview_pending = False
                     self.schedule_live_preview(delay=250)
 
-    def update_row(self, index, status=None, count=""):
+    def update_row(self, index, status=None, count="", manual=None, error=None):
         item_id = str(index)
         if not self.table.exists(item_id):
             return
         values = list(self.table.item(item_id, "values"))
         if status:
             values[1] = status
-        values[2] = count
+        if count != "":
+            values[2] = count
+        if manual is not None:
+            values[3] = manual
+        if error is not None:
+            values[4] = error
         self.table.item(item_id, values=values)
 
     def on_row_selected(self, _event=None):
@@ -1580,11 +1671,9 @@ class ColonyCounterGUI:
 
     def _bind_preview_traces(self):
         for variable in (
-            self.binary_threshold_var,
-            self.erosion_iterations_var,
-            self.min_solidity_var,
-            self.min_colony_area_var,
-            self.max_colony_area_var,
+            self.sensitivity_var,
+            self.colony_size_var,
+            self.split_touching_var,
         ):
             variable.trace_add("write", lambda *_: self.schedule_live_preview())
         self.preview_contrast_var.trace_add("write", self.on_preview_contrast_changed)
@@ -1637,6 +1726,7 @@ class ColonyCounterGUI:
         if result:
             result["Source_Path"] = image_path
             result["Status"] = "Preview"
+            self.apply_manual_count_to_result(result)
         self.event_queue.put(("preview_result", generation, result))
         self.event_queue.put(("preview_done", generation))
 
@@ -1644,7 +1734,10 @@ class ColonyCounterGUI:
         output_path = result.get("Output_Path")
         if output_path:
             self.load_preview_image(output_path)
-        self.preview_result.config(text=f"Colonies: {result.get('Colony_Count', '')}")
+        manual = result.get("Manual_Count", "")
+        error = result.get("Count_Error", "")
+        suffix = f"   Manual: {manual}   Error: {error}" if manual != "" else ""
+        self.preview_result.config(text=f"Colonies: {self.format_colony_count(result)}{suffix}")
 
     def load_preview_image(self, path):
         if not path or not os.path.exists(path):
@@ -1683,12 +1776,40 @@ class ColonyCounterGUI:
 
     def settings(self):
         return {
-            "binary_threshold": int(float(self.binary_threshold_var.get())),
-            "erosion_iterations": int(float(self.erosion_iterations_var.get())),
-            "min_solidity": float(self.min_solidity_var.get()),
-            "min_colony_area": float(self.min_colony_area_var.get()),
-            "max_colony_area": float(self.max_colony_area_var.get()),
+            "sensitivity": float(self.sensitivity_var.get()),
+            "colony_size": self.colony_size_var.get(),
+            "split_touching": bool(self.split_touching_var.get()),
+            "save_diagnostics": bool(self.save_diagnostics_var.get()),
         }
+
+    def manual_count_for(self, image_path):
+        return self.manual_counts.get(image_path, self.manual_counts.get(os.path.basename(image_path), ""))
+
+    def apply_manual_count_to_result(self, result):
+        manual_count = self.manual_count_for(result.get("Source_Path", result.get("Filename", "")))
+        if manual_count == "":
+            manual_count = self.manual_count_for(result.get("Filename", ""))
+        if manual_count == "":
+            result["Manual_Count"] = ""
+            result["Count_Error"] = ""
+            result["Percent_Error"] = ""
+            return
+        if result.get("Too_Many_To_Count"):
+            result["Manual_Count"] = int(manual_count)
+            result["Count_Error"] = ""
+            result["Percent_Error"] = ""
+            return
+        predicted = int(result.get("Colony_Count", 0))
+        error = predicted - int(manual_count)
+        result["Manual_Count"] = int(manual_count)
+        result["Count_Error"] = error
+        result["Percent_Error"] = round((abs(error) / int(manual_count)) * 100, 2) if int(manual_count) else ""
+
+    def format_colony_count(self, result):
+        if result.get("Too_Many_To_Count"):
+            limit = result.get("Too_Many_To_Count_Limit", count_colonies.TOO_MANY_TO_COUNT_LIMIT)
+            return f"Too many to count (>{limit})"
+        return result.get("Colony_Count", "")
 
     def write_current_csv(self):
         rows = [self.results_by_path[path] for path in self.image_paths if path in self.results_by_path]
@@ -1780,11 +1901,27 @@ def write_colony_csv(path, rows):
         "Source_Path",
         "Status",
         "Colony_Count",
+        "Raw_Colony_Count",
+        "Too_Many_To_Count",
+        "Too_Many_To_Count_Limit",
+        "Count_Stopped_Early",
+        "Manual_Count",
+        "Count_Error",
+        "Percent_Error",
+        "Detection_Sensitivity",
+        "Colony_Size",
+        "Split_Touching",
+        "Detected_Polarity",
+        "Auto_Threshold",
+        "Threshold_Sweep",
+        "Accepted_Threshold_Components",
         "Binary_Threshold",
         "Erosion_Iterations",
         "Min_Solidity",
         "Min_Colony_Area",
         "Max_Colony_Area",
+        "Diagnostics_Path",
+        "Colonies_Debug_CSV",
         "Output_Path",
     ]
     with open(path, "w", newline="", encoding="utf-8") as csv_file:
