@@ -735,3 +735,113 @@ GUI built; entering mainloop
 Starting Tk UI with /usr/local/bin/python3
 Tk root created
 GUI built; entering mainloop
+
+--- Launch Sun May 10 02:34:36 PDT 2026 ---
+Starting Tk UI with /usr/local/bin/python3
+Tk root created
+GUI built; entering mainloop
+Mainloop exited
+
+Processing conc1_high_10^-4.jpg with YOLO colony detector...
+  - Count result: 44
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/live_preview/preview_conc1_high_10^-4_colonies_counted.png
+
+Processing conc1_high_10^-4.jpg with YOLO colony detector...
+  - Count result: 44
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc1_high_10^-4_colonies_counted.png
+
+Processing conc1_high_10^-4.jpg with YOLO colony detector...
+  - Count result: 44
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc1_high_10^-4_colonies_counted.png
+
+Processing WT(1)10^-2.jpg with YOLO colony detector...
+  - Count result: 162
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/WT(1)10^-2_colonies_counted.png
+
+Processing WT(2)10^-2.jpg with YOLO colony detector...
+  - Count result: 257
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/WT(2)10^-2_colonies_counted.png
+
+Processing WT(3)10^-2.jpg with YOLO colony detector...
+  - Count result: Too many to count
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/WT(3)10^-2_colonies_counted.png
+
+Processing conc1_high_10^-2.jpg with YOLO colony detector...
+  - Count result: Too many to count
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc1_high_10^-2_colonies_counted.png
+
+Processing conc1_high_10^-3.jpg with YOLO colony detector...
+  - Count result: Too many to count
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc1_high_10^-3_colonies_counted.png
+
+Processing conc1_low_10^-2.jpg with YOLO colony detector...
+  - Count result: Too many to count
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc1_low_10^-2_colonies_counted.png
+
+Processing conc1_low_10^-3.jpg with YOLO colony detector...
+  - Count result: Too many to count
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc1_low_10^-3_colonies_counted.png
+
+Processing conc1_low_10^-4.jpg with YOLO colony detector...
+  - Count result: 30
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc1_low_10^-4_colonies_counted.png
+
+Processing conc2_high_10^-3.jpg with YOLO colony detector...
+  - Count result: Too many to count
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc2_high_10^-3_colonies_counted.png
+
+Processing conc2_high_10^-4.jpg with YOLO colony detector...
+  - Count result: 29
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc2_high_10^-4_colonies_counted.png
+
+Processing conc2_low_10^-0.jpg with YOLO colony detector...
+  - Count result: 0
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc2_low_10^-0_colonies_counted.png
+
+Processing conc2_low_10^-4.jpg with YOLO colony detector...
+  - Count result: 40
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc2_low_10^-4_colonies_counted.png
+
+Processing conc3_high_10^-3.jpg with YOLO colony detector...
+  - Count result: Too many to count
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc3_high_10^-3_colonies_counted.png
+
+Processing conc3_high_10^-4.jpg with YOLO colony detector...
+  - Count result: 53
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc3_high_10^-4_colonies_counted.png
+
+Processing conc3_high_10^0.jpg with YOLO colony detector...
+  - Count result: 0
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc3_high_10^0_colonies_counted.png
+
+Processing conc3_low_10^-2.jpg with YOLO colony detector...
+  - Count result: Too many to count
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc3_low_10^-2_colonies_counted.png
+
+Processing conc3_low_10^-3.jpg with YOLO colony detector...
+  - Count result: Too many to count
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc3_low_10^-3_colonies_counted.png
+
+Processing conc3_low_10^-4(1).jpg with YOLO colony detector...
+  - Count result: 40
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc3_low_10^-4(1)_colonies_counted.png
+
+Processing conc3_low_10^-4.jpg with YOLO colony detector...
+  - Count result: 40
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/conc3_low_10^-4_colonies_counted.png
+
+Processing fur(3)10^-2.jpg.jpg with YOLO colony detector...
+  - Count result: Too many to count
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/fur(3)10^-2.jpg_colonies_counted.png
+
+Processing photo-1687180109576-663e3e8df7bd.jpg with YOLO colony detector...
+  - Count result: Too many to count
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/photo-1687180109576-663e3e8df7bd_colonies_counted.png
+
+Processing tonB(2)10^-3.jpg with YOLO colony detector...
+  - Count result: 34
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/tonB(2)10^-3_colonies_counted.png
+
+Processing tonB(3)10^-2.jpg with YOLO colony detector...
+  - Count result: Too many to count
+  - Saved annotated image to: /Users/jinko/Desktop/Swim Diameter Project/colony_output/tonB(3)10^-2_colonies_counted.png

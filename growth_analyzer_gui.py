@@ -21,7 +21,7 @@ if not os.environ.get("SWIM_TK_UI_REEXECED") and sys.executable.startswith("/opt
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-import count_colonies
+import count_colonies_yolo as count_colonies
 
 try:
     from PIL import Image, ImageDraw, ImageEnhance, ImageTk
