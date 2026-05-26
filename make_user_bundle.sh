@@ -16,8 +16,6 @@ COMMON_ITEMS=(
   "analyze_plates.py"
   "count_colonies.py"
   "count_colonies_yolo.py"
-  "azure.tcl"
-  "theme"
   "Sample Colonies Images"
   "images"
 )

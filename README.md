@@ -125,6 +125,8 @@ For the swim diameter workflow, you can manually adjust the measurement ellipse 
 
 For the colony counter workflow, the trained YOLO model handles detection automatically. The app crops annotated outputs around the plate and stops counting once a plate is confirmed to have more than 300 colonies.
 
+After a colony batch count finishes, select an analyzed image to correct the count manually. Click a red dot to remove that detected colony, or click an empty spot on the annotated image to add a colony. The displayed count, annotated image text, and `colony_counts.csv` update after each edit.
+
 ## Project Files
 
 - `growth_analyzer_gui.py`: main desktop app and user interface
@@ -139,7 +141,6 @@ For the colony counter workflow, the trained YOLO model handles detection automa
 - `run_agarlens.sh`: macOS/Linux terminal launcher
 - `run_agarlens.bat`: Windows launcher
 - `make_user_bundle.sh`: creates platform-specific release ZIP files
-- `build_mac_app.sh`: experimental macOS `.app` build script for release maintainers
 
 ## YOLO Model Location
 
@@ -180,17 +181,11 @@ AgarLens_Windows_YYYYMMDD-HHMMSS.zip
 
 Upload those ZIP files to the GitHub Releases page.
 
-## Building A Standalone Mac App
-
-`build_mac_app.sh` is only for release maintainers experimenting with a full `.app` bundle. Normal users should not run it.
-
-The standalone bundle is large because it includes Python, OpenCV, Torch, Ultralytics, and the YOLO model. On this project, early builds were roughly 750 MB and may require proper Apple Developer signing/notarization for public distribution.
-
 ## Troubleshooting
 
 ### The colony counter takes a while on the first image
 
-The YOLO model and Torch backend have to load the first time colony counting runs. The app warms the model in the background when the colony counter page opens, but the first count can still take longer than later counts.
+The YOLO model and Torch backend have to load the first time the colony counter page opens. The app warms the model in the background and keeps **Run Batch Count** disabled until the warmup finishes, so the first real image should no longer pay the model-loading cost.
 
 ### The colony counter says the model is missing
 

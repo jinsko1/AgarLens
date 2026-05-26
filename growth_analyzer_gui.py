@@ -37,7 +37,6 @@ PREVIEW_DEBOUNCE_MS = 900
 STARTUP_LOG_PATH = os.path.join(PROJECT_DIR, "gui_startup.log")
 COLONY_TOO_MANY_TO_COUNT_LIMIT = 300
 PREVIEW_CACHE_LIMIT = 256
-USE_AZURE_THEME = False
 _colony_backend = None
 _colony_backend_lock = threading.Lock()
 
@@ -222,13 +221,7 @@ class ProgramLauncher:
         log_startup(f"Launcher window shown in {time.perf_counter() - step_t0:.3f}s")
 
     def _load_theme(self):
-        if not USE_AZURE_THEME:
-            return
-        try:
-            self.root.tk.call("source", os.path.join(PROJECT_DIR, "azure.tcl"))
-            self.root.tk.call("set_theme", "light")
-        except tk.TclError:
-            pass
+        return
 
     def clear_root(self):
         for child in self.root.winfo_children():
@@ -342,13 +335,7 @@ class GrowthAnalyzerGUI:
         self.root.after(100, self._drain_event_queue)
 
     def _load_theme(self):
-        if not USE_AZURE_THEME:
-            return
-        try:
-            self.root.tk.call("source", os.path.join(PROJECT_DIR, "azure.tcl"))
-            self.root.tk.call("set_theme", "light")
-        except tk.TclError:
-            pass
+        return
 
     def _build_ui(self):
         self.root.columnconfigure(0, weight=1)
@@ -623,6 +610,10 @@ class GrowthAnalyzerGUI:
         self.preview_path = None
         self.preview_display_path = None
         self.preview_photo = None
+        self.preview_image_box = None
+        self.preview_source_size = None
+        self.current_preview_result = None
+        self.manual_undo_by_path = {}
         self.preview_cache.clear()
         self.preview_cache_order.clear()
         self.preview_generation += 1
@@ -1375,6 +1366,10 @@ class ColonyCounterGUI:
         self.preview_path = None
         self.preview_display_path = None
         self.preview_photo = None
+        self.preview_image_box = None
+        self.preview_source_size = None
+        self.current_preview_result = None
+        self.manual_undo_by_path = {}
         self.preview_cache = {}
         self.preview_cache_order = []
 
@@ -1390,18 +1385,13 @@ class ColonyCounterGUI:
         self._build_ui()
         self._bind_preview_traces()
         self._set_status("Choose a folder or images. Select a row to preview it.")
+        self.run_button.state(["disabled"])
         self.root.after(150, self.show_window)
         self.root.after(100, self._drain_event_queue)
         self.root.after(250, self.start_model_warmup)
 
     def _load_theme(self):
-        if not USE_AZURE_THEME:
-            return
-        try:
-            self.root.tk.call("source", os.path.join(PROJECT_DIR, "azure.tcl"))
-            self.root.tk.call("set_theme", "light")
-        except tk.TclError:
-            pass
+        return
 
     def _build_ui(self):
         self.root.columnconfigure(0, weight=1)
@@ -1469,10 +1459,12 @@ class ColonyCounterGUI:
 
         self.run_button = ttk.Button(parent, text="Run Batch Count", command=self.start_batch_analysis, style="Accent.TButton")
         self.run_button.grid(row=6, column=0, sticky="ew", pady=(18, 8), ipady=4)
+        self.undo_colony_button = ttk.Button(parent, text="Undo Colony Edit", command=self.undo_colony_edit, state="disabled")
+        self.undo_colony_button.grid(row=7, column=0, sticky="ew", pady=(0, 8))
         self.progress = ttk.Progressbar(parent, mode="determinate")
-        self.progress.grid(row=7, column=0, sticky="ew", pady=(16, 6))
+        self.progress.grid(row=8, column=0, sticky="ew", pady=(16, 6))
         self.status_label = ttk.Label(parent, text="", wraplength=300)
-        self.status_label.grid(row=8, column=0, sticky="ew")
+        self.status_label.grid(row=9, column=0, sticky="ew")
 
     def _spin(self, parent, row, label, variable, from_, to, increment):
         ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=(0, 4))
@@ -1574,6 +1566,7 @@ class ColonyCounterGUI:
         self.preview_canvas = tk.Canvas(frame, highlightthickness=0, background="#f4f6f8")
         self.preview_canvas.grid(row=1, column=0, sticky="nsew")
         self.preview_canvas.create_text(20, 20, text="Select a row to preview this image.", anchor="nw", fill="#5f6b7a")
+        self.preview_canvas.bind("<Button-1>", self.on_colony_preview_click)
         self.preview_canvas.bind("<Configure>", lambda _event: self.refresh_preview_display())
         self.preview_result = ttk.Label(frame, text="", anchor="center")
         self.preview_result.grid(row=2, column=0, sticky="ew", pady=(8, 0))
@@ -1641,6 +1634,10 @@ class ColonyCounterGUI:
         self.preview_path = None
         self.preview_display_path = None
         self.preview_photo = None
+        self.preview_image_box = None
+        self.preview_source_size = None
+        self.current_preview_result = None
+        self.manual_undo_by_path = {}
         self.preview_cache.clear()
         self.preview_cache_order.clear()
         self.preview_generation += 1
@@ -1652,6 +1649,7 @@ class ColonyCounterGUI:
         self.preview_result.config(text="")
         self.preview_status.config(text="")
         self.progress["value"] = 0
+        self.undo_colony_button.state(["disabled"])
         self._set_status("Choose a folder or images. Select a row to preview it.")
 
     def choose_output_dir(self):
@@ -1661,6 +1659,9 @@ class ColonyCounterGUI:
 
     def start_batch_analysis(self):
         if self.is_busy():
+            return
+        if not self.model_ready:
+            messagebox.showinfo("Model Still Loading", "The colony counter model is still preparing. The Run Batch Count button will turn on when it is ready.")
             return
         if not self.image_paths:
             messagebox.showinfo("No Images", "Add images or a folder first.")
@@ -1680,14 +1681,15 @@ class ColonyCounterGUI:
         self.progress["maximum"] = len(self.image_paths)
         self.progress["value"] = 0
         self.run_button.state(["disabled"])
+        self.undo_colony_button.state(["disabled"])
         self.batch_thread = threading.Thread(target=self._batch_worker, args=(settings,), daemon=True)
         self.batch_thread.start()
 
     def _batch_worker(self, settings):
         if not self.model_ready:
-            self.event_queue.put(("batch_message", "Preparing YOLO model. The first count may take a little longer."))
+            self.event_queue.put(("batch_message", "Preparing YOLO model before counting."))
             try:
-                get_colony_backend().get_model()
+                get_colony_backend().warmup_model()
             except Exception as exc:
                 self.event_queue.put(("batch_message", f"YOLO model failed to load: {exc}"))
                 self.event_queue.put(("batch_done",))
@@ -1718,14 +1720,15 @@ class ColonyCounterGUI:
         log_startup("Colony YOLO model warmup started")
         try:
             backend = get_colony_backend()
-            backend.get_model()
-            device = backend.get_device()
+            warmup = backend.warmup_model()
+            device = warmup["device"]
         except Exception as exc:
             log_startup(f"Colony YOLO model warmup failed: {exc}")
             self.event_queue.put(("model_error", str(exc)))
             return
-        log_startup(f"Colony YOLO model warmup finished in {time.perf_counter() - start_time:.3f}s on {device}")
-        self.event_queue.put(("model_ready", time.perf_counter() - start_time, device))
+        seconds = time.perf_counter() - start_time
+        log_startup(f"Colony YOLO model warmup finished in {seconds:.3f}s on {device}")
+        self.event_queue.put(("model_ready", seconds, device))
 
     def _count_path(self, index, image_path, settings, output_dir, output_filename, save_diagnostics=False):
         os.makedirs(output_dir, exist_ok=True)
@@ -1774,15 +1777,24 @@ class ColonyCounterGUI:
         elif kind == "model_ready":
             _, seconds, device = event
             self.model_ready = True
+            self.run_button.state(["!disabled"])
             if not self.is_busy():
                 self._set_status(f"Colony counter model ready ({device}, {seconds:.1f}s). Add images or run a batch.")
         elif kind == "model_error":
             self.model_ready = False
+            self.run_button.state(["disabled"])
             self._set_status(f"Colony counter model could not load: {event[1]}")
         elif kind == "batch_done":
             self.batch_thread = None
-            self.run_button.state(["!disabled"])
-            self._set_status(f"Finished: {len(self.results_by_path)} colony count result(s).")
+            if self.model_ready:
+                self.run_button.state(["!disabled"])
+            else:
+                self.run_button.state(["disabled"])
+            self.update_colony_undo_button()
+            self._set_status(
+                f"Finished: {len(self.results_by_path)} colony count result(s). "
+                "Select an analyzed image, click a red dot to remove it, or click open space to add a colony."
+            )
             self.start_preview_preload()
         elif kind == "preview_result":
             _, generation, result = event
@@ -1826,9 +1838,11 @@ class ColonyCounterGUI:
         if result:
             self.apply_preview_result(result)
         else:
+            self.current_preview_result = None
             self.load_preview_image(path)
             self.preview_result.config(text="Run batch count to analyze this image.")
             self.preview_status.config(text="")
+        self.update_colony_undo_button()
 
     def _bind_preview_traces(self):
         for variable in (
@@ -1891,10 +1905,12 @@ class ColonyCounterGUI:
         self.event_queue.put(("preview_done", generation))
 
     def apply_preview_result(self, result):
+        self.current_preview_result = result
         output_path = result.get("Output_Path")
         if output_path:
             self.load_preview_image(output_path)
         self.preview_result.config(text=f"Colonies: {self.format_colony_count(result)}")
+        self.update_colony_undo_button()
 
     def load_preview_image(self, path):
         if not path or not os.path.exists(path):
@@ -1909,7 +1925,7 @@ class ColonyCounterGUI:
         try:
             max_w = max(360, self.preview_canvas.winfo_width() - 20)
             max_h = max(280, self.preview_canvas.winfo_height() - 20)
-            self.preview_photo, _source_size = load_preview_photo(
+            self.preview_photo, self.preview_source_size = load_preview_photo(
                 self,
                 path,
                 max_w,
@@ -1921,8 +1937,11 @@ class ColonyCounterGUI:
             canvas_h = max(1, self.preview_canvas.winfo_height())
             x = max(0, (canvas_w - self.preview_photo.width()) // 2)
             y = max(0, (canvas_h - self.preview_photo.height()) // 2)
+            self.preview_image_box = (x, y, x + self.preview_photo.width(), y + self.preview_photo.height())
             self.preview_canvas.create_image(x, y, image=self.preview_photo, anchor="nw")
         except (tk.TclError, OSError, ValueError) as exc:
+            self.preview_image_box = None
+            self.preview_source_size = None
             self.preview_canvas.delete("all")
             self.preview_canvas.create_text(20, 20, text=f"Preview unavailable: {exc}", anchor="nw", fill="#5f6b7a")
 
@@ -1958,6 +1977,190 @@ class ColonyCounterGUI:
             pass
         if self.preview_preload_queue:
             self.preview_preload_after_id = self.root.after(15, self.preload_next_preview)
+
+    def canvas_to_preview_image_point(self, canvas_x, canvas_y):
+        if not self.preview_image_box or not self.preview_source_size:
+            return None
+        left, top, right, bottom = self.preview_image_box
+        if canvas_x < left or canvas_y < top or canvas_x > right or canvas_y > bottom:
+            return None
+        displayed_w = max(1, right - left)
+        displayed_h = max(1, bottom - top)
+        source_w, source_h = self.preview_source_size
+        image_x = (canvas_x - left) * source_w / displayed_w
+        image_y = (canvas_y - top) * source_h / displayed_h
+        return int(round(image_x)), int(round(image_y))
+
+    def editable_colonies(self, result):
+        colonies = result.get("Detected_Colonies", []) if result else []
+        if isinstance(colonies, str):
+            try:
+                colonies = json.loads(colonies)
+            except json.JSONDecodeError:
+                colonies = []
+        return [dict(colony) for colony in colonies if isinstance(colony, dict)]
+
+    def on_colony_preview_click(self, event):
+        result = self.current_preview_result
+        if not result or self.is_busy():
+            return
+        if result.get("Too_Many_To_Count"):
+            messagebox.showinfo("Too Many To Count", "Manual colony edits are disabled for plates already marked as more than 300 colonies.")
+            return
+        point = self.canvas_to_preview_image_point(event.x, event.y)
+        if point is None:
+            return
+        colonies = self.editable_colonies(result)
+        image_w, image_h = self.preview_source_size
+        click_x = max(0, min(image_w - 1, point[0]))
+        click_y = max(0, min(image_h - 1, point[1]))
+        min_dim = max(1, min(image_w, image_h))
+        remove_radius = max(10, min_dim * 0.018)
+        nearest_index = None
+        nearest_distance = None
+        for index, colony in enumerate(colonies):
+            try:
+                dx = float(colony.get("x", 0)) - click_x
+                dy = float(colony.get("y", 0)) - click_y
+            except (TypeError, ValueError):
+                continue
+            distance = math.hypot(dx, dy)
+            if nearest_distance is None or distance < nearest_distance:
+                nearest_distance = distance
+                nearest_index = index
+        if nearest_index is not None and nearest_distance is not None and nearest_distance <= remove_radius:
+            colonies.pop(nearest_index)
+            action = "removed"
+        else:
+            marker_radius = max(6, int(round(min_dim * 0.01)))
+            colonies.append({
+                "x": int(click_x),
+                "y": int(click_y),
+                "box": [int(click_x - marker_radius), int(click_y - marker_radius), int(click_x + marker_radius), int(click_y + marker_radius)],
+                "source": "manual",
+            })
+            action = "added"
+        self.apply_manual_colony_count(colonies, action)
+
+    def apply_manual_colony_count(self, colonies, action):
+        if not self.preview_path or not self.current_preview_result:
+            return
+        if self.preview_path not in self.manual_undo_by_path:
+            self.manual_undo_by_path[self.preview_path] = dict(self.current_preview_result)
+        count = len(colonies)
+        output_path = self.save_manual_colony_annotation(self.preview_path, colonies, count)
+        if not output_path:
+            self._set_status("Manual colony edit could not be saved.")
+            return
+        original_count = self.current_preview_result.get("Raw_Colony_Count", count)
+        result = dict(self.current_preview_result)
+        result.update({
+            "Status": "Manual Edit",
+            "Method": "Manual Colony Edit",
+            "Colony_Count": count,
+            "Raw_Colony_Count": count,
+            "Too_Many_To_Count": False,
+            "Count_Stopped_Early": False,
+            "Accepted_Threshold_Components": count,
+            "Manual_Adjustment": True,
+            "Manual_Original_Count": original_count,
+            "Detected_Colonies": colonies,
+            "Output_Path": output_path,
+            "Source_Path": self.preview_path,
+        })
+        self.current_preview_result = result
+        self.results_by_path[self.preview_path] = result
+        if self.preview_path in self.image_paths:
+            index = self.image_paths.index(self.preview_path)
+            self.update_row(index, "Manual Edit", count)
+        self.load_preview_image(output_path)
+        self.preview_result.config(text=f"Colonies: {count}")
+        self.write_current_csv()
+        self.update_colony_undo_button()
+        self._set_status(f"Manual colony {action}. Click a red dot to remove it, or click open space to add one.")
+
+    def save_manual_colony_annotation(self, image_path, colonies, count):
+        try:
+            import cv2
+        except ImportError:
+            return ""
+        original_image = cv2.imread(image_path)
+        if original_image is None:
+            return ""
+        result = self.current_preview_result or {}
+        crop_box = result.get("Crop_Box_px", [])
+        if isinstance(crop_box, str):
+            try:
+                crop_box = json.loads(crop_box)
+            except json.JSONDecodeError:
+                crop_box = []
+        height, width = original_image.shape[:2]
+        if len(crop_box) == 4:
+            crop_x1, crop_y1, crop_x2, crop_y2 = [int(value) for value in crop_box]
+            crop_x1 = max(0, min(width - 1, crop_x1))
+            crop_y1 = max(0, min(height - 1, crop_y1))
+            crop_x2 = max(crop_x1 + 1, min(width, crop_x2))
+            crop_y2 = max(crop_y1 + 1, min(height, crop_y2))
+        else:
+            crop_x1, crop_y1, crop_x2, crop_y2 = 0, 0, width, height
+        output_image = original_image[crop_y1:crop_y2, crop_x1:crop_x2].copy()
+        plate_center = result.get("Plate_Center_px", [])
+        plate_radius = result.get("Plate_Radius_px", 0)
+        inner_radius = result.get("Inner_Radius_px", 0)
+        if len(plate_center) == 2 and plate_radius:
+            center = (int(plate_center[0]) - crop_x1, int(plate_center[1]) - crop_y1)
+            cv2.circle(output_image, center, int(plate_radius), (255, 0, 0), 3)
+            if inner_radius:
+                cv2.circle(output_image, center, int(inner_radius), (255, 255, 0), 2)
+        for colony in colonies:
+            try:
+                x = int(round(float(colony.get("x", 0))))
+                y = int(round(float(colony.get("y", 0))))
+            except (TypeError, ValueError):
+                continue
+            box = colony.get("box") or []
+            if isinstance(box, str):
+                try:
+                    box = json.loads(box)
+                except json.JSONDecodeError:
+                    box = []
+            if len(box) == 4:
+                x1, y1, x2, y2 = [int(round(float(value))) for value in box]
+                cv2.rectangle(output_image, (x1, y1), (x2, y2), (0, 180, 0), 2)
+            else:
+                radius = max(6, int(round(min(output_image.shape[:2]) * 0.01)))
+                cv2.circle(output_image, (x, y), radius, (0, 180, 0), 2)
+            cv2.circle(output_image, (x, y), 2, (0, 0, 255), 3)
+        text = f"Colony Count: {count}"
+        get_colony_backend().draw_count_text(output_image, text)
+        os.makedirs(self.output_dir_var.get(), exist_ok=True)
+        output_path = os.path.join(self.output_dir_var.get(), manual_colony_output_filename_for(image_path))
+        cv2.imwrite(output_path, output_image)
+        return output_path
+
+    def update_colony_undo_button(self):
+        if self.preview_path and self.preview_path in self.manual_undo_by_path and not self.is_busy():
+            self.undo_colony_button.state(["!disabled"])
+        else:
+            self.undo_colony_button.state(["disabled"])
+
+    def undo_colony_edit(self):
+        if not self.preview_path or self.preview_path not in self.manual_undo_by_path:
+            return
+        result = self.manual_undo_by_path.pop(self.preview_path)
+        result["Source_Path"] = self.preview_path
+        self.current_preview_result = result
+        self.results_by_path[self.preview_path] = result
+        if self.preview_path in self.image_paths:
+            index = self.image_paths.index(self.preview_path)
+            self.update_row(index, result.get("Status", "Success"), self.format_colony_count(result))
+        output_path = result.get("Output_Path")
+        if output_path:
+            self.load_preview_image(output_path)
+        self.preview_result.config(text=f"Colonies: {self.format_colony_count(result)}")
+        self.write_current_csv()
+        self.update_colony_undo_button()
+        self._set_status("Manual colony edit undone for the selected image.")
 
     def settings(self):
         return {
@@ -2060,6 +2263,11 @@ def colony_preview_filename_for(path):
     return f"preview_{stem}_colonies_counted.png"
 
 
+def manual_colony_output_filename_for(path):
+    stem = os.path.splitext(os.path.basename(path))[0]
+    return f"{stem}_colonies_manual.png"
+
+
 def write_csv(path, rows):
     fieldnames = ["Filename", "Source_Path", "Status", "Method", "Sensitivity", "Max_Diameter_cm", "Min_Diameter_cm", "Area_cm2", "Pixel_to_CM_Ratio", "Output_Path"]
     with open(path, "w", newline="", encoding="utf-8") as csv_file:
@@ -2074,8 +2282,11 @@ def write_colony_csv(path, rows):
         "Filename",
         "Source_Path",
         "Status",
+        "Method",
         "Colony_Count",
         "Raw_Colony_Count",
+        "Manual_Adjustment",
+        "Manual_Original_Count",
         "Too_Many_To_Count",
         "Too_Many_To_Count_Limit",
         "Count_Stopped_Early",

@@ -29,7 +29,9 @@ TOO_MANY_TO_COUNT_LIMIT = legacy_count_colonies.TOO_MANY_TO_COUNT_LIMIT
 _model = None
 _torch = None
 _yolo_class = None
+_warmup_done = False
 _model_lock = threading.Lock()
+_warmup_lock = threading.Lock()
 _predict_lock = threading.Lock()
 
 
@@ -79,6 +81,32 @@ def get_model():
             YOLO = get_yolo_class()
             _model = YOLO(MODEL_PATH)
     return _model
+
+
+def warmup_model():
+    """Load YOLO and run one dummy prediction so the first real plate is fast."""
+    global _warmup_done
+    start_time = time.perf_counter()
+    model = get_model()
+    device = get_device()
+    with _warmup_lock:
+        if not _warmup_done:
+            dummy_image = np.zeros((IMG_SIZE, IMG_SIZE, 3), dtype=np.uint8)
+            with _predict_lock:
+                model.predict(
+                    source=dummy_image,
+                    imgsz=IMG_SIZE,
+                    conf=0.99,
+                    iou=DEFAULT_IOU,
+                    max_det=1,
+                    device=device,
+                    verbose=False,
+                )
+            _warmup_done = True
+    return {
+        "device": device,
+        "seconds": time.perf_counter() - start_time,
+    }
 
 
 def sensitivity_to_confidence(sensitivity):
@@ -336,6 +364,17 @@ def process_image(
     text = f"Too many to count (>{TOO_MANY_TO_COUNT_LIMIT})" if too_many_to_count else f"Colony Count: {colony_count}"
     cropped_output, crop_box = crop_around_plate(output_image, plate_x, plate_y, plate_r)
     draw_count_text(cropped_output, text)
+    crop_x1, crop_y1, _, _ = crop_box
+    detected_colonies = []
+    for colony in final_colonies:
+        x1, y1, x2, y2 = colony["box"]
+        cx, cy = box_center(colony["box"])
+        detected_colonies.append({
+            "x": int(cx - crop_x1),
+            "y": int(cy - crop_y1),
+            "box": [int(x1 - crop_x1), int(y1 - crop_y1), int(x2 - crop_x1), int(y2 - crop_y1)],
+            "source": "model",
+        })
 
     os.makedirs(output_dir, exist_ok=True)
     output_filename = output_filename or f"{os.path.splitext(filename)[0]}_colonies_counted.png"
@@ -359,6 +398,7 @@ def process_image(
     if return_details:
         return {
             "Filename": filename,
+            "Method": "YOLO",
             "Colony_Count": colony_count,
             "Raw_Colony_Count": raw_colony_count,
             "Too_Many_To_Count": too_many_to_count,
@@ -366,6 +406,10 @@ def process_image(
             "Count_Stopped_Early": too_many_to_count,
             "Output_Path": output_path,
             "Crop_Box_px": crop_box,
+            "Plate_Center_px": [int(plate_x), int(plate_y)],
+            "Plate_Radius_px": int(plate_r),
+            "Inner_Radius_px": int(inner_radius),
+            "Detected_Colonies": detected_colonies,
             "Detection_Sensitivity": sensitivity,
             "Colony_Size": colony_size,
             "Split_Touching": bool(split_touching),
