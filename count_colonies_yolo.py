@@ -2,6 +2,8 @@ import csv
 import math
 import os
 import sys
+import threading
+import time
 
 import cv2
 import numpy as np
@@ -27,6 +29,8 @@ TOO_MANY_TO_COUNT_LIMIT = legacy_count_colonies.TOO_MANY_TO_COUNT_LIMIT
 _model = None
 _torch = None
 _yolo_class = None
+_model_lock = threading.Lock()
+_predict_lock = threading.Lock()
 
 
 def get_torch():
@@ -64,13 +68,16 @@ def get_device():
 
 def get_model():
     global _model
-    if _model is None:
-        if not os.path.exists(MODEL_PATH):
-            raise FileNotFoundError(
-                f"YOLO model not found at {MODEL_PATH}. Add your trained best.pt file there."
-            )
-        YOLO = get_yolo_class()
-        _model = YOLO(MODEL_PATH)
+    if _model is not None:
+        return _model
+    with _model_lock:
+        if _model is None:
+            if not os.path.exists(MODEL_PATH):
+                raise FileNotFoundError(
+                    f"YOLO model not found at {MODEL_PATH}. Add your trained best.pt file there."
+                )
+            YOLO = get_yolo_class()
+            _model = YOLO(MODEL_PATH)
     return _model
 
 
@@ -166,11 +173,13 @@ def detection_debug_row(filename, detection_id, accepted, reject_reason, box, co
 
 def draw_count_text(output_image, text):
     font = cv2.FONT_HERSHEY_SIMPLEX
-    font_scale = 1
-    font_thickness = 2
+    min_dim = max(1, min(output_image.shape[:2]))
+    font_scale = max(0.45, min(2.4, min_dim / 900.0))
+    font_thickness = max(1, int(round(font_scale * 2)))
+    margin = max(12, int(round(min_dim * 0.02)))
     text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
-    text_x = max(20, output_image.shape[1] - text_size[0] - 20)
-    text_y = output_image.shape[0] - 20
+    text_x = max(margin, output_image.shape[1] - text_size[0] - margin)
+    text_y = output_image.shape[0] - margin
     cv2.putText(output_image, text, (text_x, text_y), font, font_scale, (255, 255, 255), font_thickness)
 
 
@@ -202,8 +211,9 @@ def process_image(
     save_diagnostics=False,
     diagnostic_dir=None,
 ):
+    start_time = time.perf_counter()
     filename = os.path.basename(image_path)
-    print(f"\nProcessing {filename} with YOLO colony detector...")
+    print(f"\nProcessing {filename} with YOLO colony detector...", flush=True)
 
     original_image = cv2.imread(image_path)
     if original_image is None:
@@ -233,16 +243,22 @@ def process_image(
 
     conf = sensitivity_to_confidence(sensitivity)
     try:
+        load_start = time.perf_counter()
         model = get_model()
-        predictions = model.predict(
-            source=masked_image,
-            imgsz=IMG_SIZE,
-            conf=conf,
-            iou=DEFAULT_IOU,
-            max_det=DEFAULT_MAX_DET,
-            device=get_device(),
-            verbose=False,
-        )
+        device = get_device()
+        print(f"  - YOLO model ready in {time.perf_counter() - load_start:.2f}s on {device}", flush=True)
+        predict_start = time.perf_counter()
+        with _predict_lock:
+            predictions = model.predict(
+                source=masked_image,
+                imgsz=IMG_SIZE,
+                conf=conf,
+                iou=DEFAULT_IOU,
+                max_det=DEFAULT_MAX_DET,
+                device=device,
+                verbose=False,
+            )
+        print(f"  - YOLO prediction finished in {time.perf_counter() - predict_start:.2f}s", flush=True)
     except (ImportError, FileNotFoundError, RuntimeError, OSError) as exc:
         print(f"  - YOLO prediction failed: {exc}")
         if return_details:
@@ -325,8 +341,9 @@ def process_image(
     output_filename = output_filename or f"{os.path.splitext(filename)[0]}_colonies_counted.png"
     output_path = os.path.join(output_dir, output_filename)
     cv2.imwrite(output_path, cropped_output)
-    print(f"  - Count result: {colony_count}")
-    print(f"  - Saved annotated image to: {output_path}")
+    print(f"  - Count result: {colony_count}", flush=True)
+    print(f"  - Saved annotated image to: {output_path}", flush=True)
+    print(f"  - Total processing time: {time.perf_counter() - start_time:.2f}s", flush=True)
 
     colonies_debug_csv_path = ""
     diagnostics_path = ""

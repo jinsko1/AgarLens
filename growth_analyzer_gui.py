@@ -39,6 +39,7 @@ COLONY_TOO_MANY_TO_COUNT_LIMIT = 300
 PREVIEW_CACHE_LIMIT = 256
 USE_AZURE_THEME = False
 _colony_backend = None
+_colony_backend_lock = threading.Lock()
 
 SETTING_HELP = {
     "Plate diameter (cm)": "The real width of your agar plate. This converts pixels into centimeters. If this is wrong, every measurement will be scaled wrong.",
@@ -105,9 +106,12 @@ def ensure_pil_loaded():
 
 def get_colony_backend():
     global _colony_backend
-    if _colony_backend is None:
-        import count_colonies_yolo as backend
-        _colony_backend = backend
+    if _colony_backend is not None:
+        return _colony_backend
+    with _colony_backend_lock:
+        if _colony_backend is None:
+            import count_colonies_yolo as backend
+            _colony_backend = backend
     return _colony_backend
 
 
@@ -1244,7 +1248,18 @@ class GrowthAnalyzerGUI:
             center_x = (left + right) / 2
             draw.line((left, center_y, right, center_y), fill=manual_color, width=3)
             draw.line((center_x, top, center_x, bottom), fill=manual_color, width=3)
-            draw.text((max(10, left), max(10, top - 36)), f"Manual Max: {max_cm:.2f} cm  Min: {min_cm:.2f} cm", fill=(255, 255, 255))
+            label_text = f"Manual Max: {max_cm:.2f} cm  Min: {min_cm:.2f} cm"
+            font_size = max(14, min(64, int(round(min(image.size) * 0.028))))
+            try:
+                from PIL import ImageFont
+                try:
+                    label_font = ImageFont.truetype("Arial.ttf", font_size)
+                except OSError:
+                    label_font = ImageFont.load_default(size=font_size)
+            except Exception:
+                label_font = None
+            label_y = max(10, top - int(font_size * 1.6))
+            draw.text((max(10, left), label_y), label_text, fill=(255, 255, 255), font=label_font)
             index = self.image_paths.index(self.preview_path) if self.preview_path in self.image_paths else 0
             output_path = os.path.join(self.output_dir_var.get(), manual_output_filename_for(index, self.preview_path))
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -1349,6 +1364,9 @@ class ColonyCounterGUI:
         self.closed = False
         self.batch_thread = None
         self.preview_thread = None
+        self.model_warmup_thread = None
+        self.model_ready = False
+        self.model_warmup_started = False
         self.preview_after_id = None
         self.preview_preload_after_id = None
         self.preview_preload_queue = []
@@ -1371,9 +1389,10 @@ class ColonyCounterGUI:
         self._load_theme()
         self._build_ui()
         self._bind_preview_traces()
-        self._set_status("Choose a folder or images. Select one row to tune the live preview.")
+        self._set_status("Choose a folder or images. Select a row to preview it.")
         self.root.after(150, self.show_window)
         self.root.after(100, self._drain_event_queue)
+        self.root.after(250, self.start_model_warmup)
 
     def _load_theme(self):
         if not USE_AZURE_THEME:
@@ -1547,14 +1566,14 @@ class ColonyCounterGUI:
         header = ttk.Frame(frame)
         header.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         header.columnconfigure(0, weight=1)
-        self.preview_title = ttk.Label(header, text="Live Preview", font=("Helvetica", 13, "bold"))
+        self.preview_title = ttk.Label(header, text="Preview", font=("Helvetica", 13, "bold"))
         self.preview_title.grid(row=0, column=0, sticky="w")
         self.preview_status = ttk.Label(header, text="")
         self.preview_status.grid(row=0, column=1, sticky="e")
 
         self.preview_canvas = tk.Canvas(frame, highlightthickness=0, background="#f4f6f8")
         self.preview_canvas.grid(row=1, column=0, sticky="nsew")
-        self.preview_canvas.create_text(20, 20, text="Select a row to tune this image.", anchor="nw", fill="#5f6b7a")
+        self.preview_canvas.create_text(20, 20, text="Select a row to preview this image.", anchor="nw", fill="#5f6b7a")
         self.preview_canvas.bind("<Configure>", lambda _event: self.refresh_preview_display())
         self.preview_result = ttk.Label(frame, text="", anchor="center")
         self.preview_result.grid(row=2, column=0, sticky="ew", pady=(8, 0))
@@ -1627,13 +1646,13 @@ class ColonyCounterGUI:
         self.preview_generation += 1
         for item in self.table.get_children():
             self.table.delete(item)
-        self.preview_title.config(text="Live Preview")
+        self.preview_title.config(text="Preview")
         self.preview_canvas.delete("all")
-        self.preview_canvas.create_text(20, 20, text="Select a row to tune this image.", anchor="nw", fill="#5f6b7a")
+        self.preview_canvas.create_text(20, 20, text="Select a row to preview this image.", anchor="nw", fill="#5f6b7a")
         self.preview_result.config(text="")
         self.preview_status.config(text="")
         self.progress["value"] = 0
-        self._set_status("Choose a folder or images. Select one row to tune the live preview.")
+        self._set_status("Choose a folder or images. Select a row to preview it.")
 
     def choose_output_dir(self):
         folder = filedialog.askdirectory(title="Select output folder", initialdir=self.output_dir_var.get())
@@ -1652,6 +1671,12 @@ class ColonyCounterGUI:
             messagebox.showerror("Invalid Settings", "One or more settings is blank or invalid. Please enter a valid number.")
             return
         os.makedirs(self.output_dir_var.get(), exist_ok=True)
+        if self.preview_after_id:
+            self.root.after_cancel(self.preview_after_id)
+            self.preview_after_id = None
+        self.preview_pending = False
+        self.preview_generation += 1
+        self.preview_status.config(text="")
         self.progress["maximum"] = len(self.image_paths)
         self.progress["value"] = 0
         self.run_button.state(["disabled"])
@@ -1659,6 +1684,15 @@ class ColonyCounterGUI:
         self.batch_thread.start()
 
     def _batch_worker(self, settings):
+        if not self.model_ready:
+            self.event_queue.put(("batch_message", "Preparing YOLO model. The first count may take a little longer."))
+            try:
+                get_colony_backend().get_model()
+            except Exception as exc:
+                self.event_queue.put(("batch_message", f"YOLO model failed to load: {exc}"))
+                self.event_queue.put(("batch_done",))
+                return
+            self.model_ready = True
         for index, image_path in enumerate(self.image_paths):
             self.event_queue.put(("status", index, "Running"))
             result = self._count_path(index, image_path, settings, self.output_dir_var.get(), colony_output_filename_for(image_path), save_diagnostics=settings["save_diagnostics"])
@@ -1670,6 +1704,28 @@ class ColonyCounterGUI:
                 self.event_queue.put(("status", index, "Failed"))
             self.event_queue.put(("progress", index + 1))
         self.event_queue.put(("batch_done",))
+
+    def start_model_warmup(self):
+        if self.closed or self.model_warmup_started:
+            return
+        self.model_warmup_started = True
+        self.model_warmup_thread = threading.Thread(target=self._model_warmup_worker, daemon=True)
+        self.model_warmup_thread.start()
+        self._set_status("Preparing colony counter model in the background...")
+
+    def _model_warmup_worker(self):
+        start_time = time.perf_counter()
+        log_startup("Colony YOLO model warmup started")
+        try:
+            backend = get_colony_backend()
+            backend.get_model()
+            device = backend.get_device()
+        except Exception as exc:
+            log_startup(f"Colony YOLO model warmup failed: {exc}")
+            self.event_queue.put(("model_error", str(exc)))
+            return
+        log_startup(f"Colony YOLO model warmup finished in {time.perf_counter() - start_time:.3f}s on {device}")
+        self.event_queue.put(("model_ready", time.perf_counter() - start_time, device))
 
     def _count_path(self, index, image_path, settings, output_dir, output_filename, save_diagnostics=False):
         os.makedirs(output_dir, exist_ok=True)
@@ -1713,6 +1769,16 @@ class ColonyCounterGUI:
         elif kind == "progress":
             self.progress["value"] = event[1]
             self._set_status(f"Counted {event[1]} of {len(self.image_paths)} image(s).")
+        elif kind == "batch_message":
+            self._set_status(event[1])
+        elif kind == "model_ready":
+            _, seconds, device = event
+            self.model_ready = True
+            if not self.is_busy():
+                self._set_status(f"Colony counter model ready ({device}, {seconds:.1f}s). Add images or run a batch.")
+        elif kind == "model_error":
+            self.model_ready = False
+            self._set_status(f"Colony counter model could not load: {event[1]}")
         elif kind == "batch_done":
             self.batch_thread = None
             self.run_button.state(["!disabled"])
@@ -1760,8 +1826,9 @@ class ColonyCounterGUI:
         if result:
             self.apply_preview_result(result)
         else:
-            self.preview_result.config(text="Live preview updates after settings settle.")
-            self.schedule_live_preview(delay=150)
+            self.load_preview_image(path)
+            self.preview_result.config(text="Run batch count to analyze this image.")
+            self.preview_status.config(text="")
 
     def _bind_preview_traces(self):
         for variable in (

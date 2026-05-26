@@ -20,6 +20,8 @@ yolo_test_output/
 # Packaged app/build outputs
 build/
 dist/
+.pyinstaller/
+.matplotlib/
 *.spec
 
 # YOLO training/model artifacts kept local by default

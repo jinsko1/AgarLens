@@ -14,6 +14,7 @@ The app is written in Python/Tkinter and is intended to run locally, without a b
 - `analyze_plates.py`: swim diameter backend
 - `count_colonies_yolo.py`: YOLO colony-counting backend
 - `count_colonies.py`: legacy OpenCV colony-counting backend kept for comparison
+- `setup_mac.command`: one-time macOS setup for lab computers
 - `run_growth_analyzer.command`: macOS double-click launcher
 - `run_agarlens.sh`: macOS/Linux terminal launcher
 - `run_agarlens.bat`: Windows launcher
@@ -41,6 +42,16 @@ set AGARLENS_MODEL_PATH=C:\path\to\best.pt
 ## Setup
 
 Use Python 3.10 or newer when possible.
+
+For a Mac lab computer, the easiest path is to double-click:
+
+```text
+setup_mac.command
+```
+
+That creates the local `venv` and installs the required packages once. After setup, users should launch the app with `run_growth_analyzer.command`.
+
+Manual macOS/Linux setup:
 
 ```bash
 python3 -m venv venv
@@ -84,9 +95,31 @@ Direct Python:
 python growth_analyzer_gui.py
 ```
 
+## Build A Mac App
+
+This is only for making a release bundle. Normal users should not do this.
+
+After setup, install PyInstaller and run the build script:
+
+```bash
+source venv/bin/activate
+python -m pip install pyinstaller
+./build_mac_app.sh
+```
+
+The app bundle is created at:
+
+```text
+dist/AgarLens.app
+```
+
+The bundled app is large because it includes Python, OpenCV, Torch, Ultralytics, and the YOLO model. On this machine the first build was about 750 MB. For sharing outside your own Mac, the app may still need proper Apple Developer signing/notarization.
+
 ## Notes For Sharing
 
-- Share the project folder, but keep generated outputs out of Git.
+- For other lab Macs, share the project folder, include `best.pt`, run `setup_mac.command` once, then use `run_growth_analyzer.command`.
+- For public distribution, build the app once and upload `AgarLens.app` as a GitHub Release. Do not ask users to run PyInstaller.
+- Keep generated outputs out of Git.
 - Include the YOLO `best.pt` model separately unless you deliberately want it tracked.
-- The app now uses the Python interpreter from the active virtual environment when available.
+- The launchers use the Python interpreter from the local virtual environment when available.
 - Output folders, logs, model artifacts, and caches are ignored by `.gitignore`.

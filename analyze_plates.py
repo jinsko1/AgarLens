@@ -65,6 +65,28 @@ AUTO_SENSITIVITY_LEVELS = {
 # --- Main Program (No changes needed below this line) ---
 # =================================================================================
 
+def annotation_text_style(image, plate_radius=None):
+    height, width = image.shape[:2]
+    reference = plate_radius * 2 if plate_radius else min(height, width)
+    font_scale = max(0.45, min(2.4, reference / 900.0))
+    thickness = max(1, int(round(font_scale * 2)))
+    line_gap = max(18, int(round(reference * 0.04)))
+    return cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness, line_gap
+
+
+def draw_measurement_labels(image, center, max_text, min_text, plate_radius=None):
+    font, font_scale, thickness, line_gap = annotation_text_style(image, plate_radius)
+    max_size = cv2.getTextSize(max_text, font, font_scale, thickness)[0]
+    min_size = cv2.getTextSize(min_text, font, font_scale, thickness)[0]
+    text_width = max(max_size[0], min_size[0])
+    x = int(center[0] - text_width / 2)
+    y1 = int(center[1] - line_gap / 2)
+    y2 = int(center[1] + line_gap)
+    margin = max(8, int(round((plate_radius or min(image.shape[:2])) * 0.02)))
+    x = max(margin, min(image.shape[1] - text_width - margin, x))
+    cv2.putText(image, max_text, (x, y1), font, font_scale, (255, 255, 255), thickness)
+    cv2.putText(image, min_text, (x, y2), font, font_scale, (255, 255, 255), thickness)
+
 def auto_analyze_agar_plate(
     image_path,
     output_dir,
@@ -201,8 +223,13 @@ def auto_analyze_agar_plate(
     print(f"  - SUCCESS: Max Diameter: {max_diam_cm:.2f} cm, Min Diameter: {min_diam_cm:.2f} cm")
 
     text_center = (int(center_ellipse[0]), int(center_ellipse[1]))
-    cv2.putText(output_image, f"Max: {max_diam_cm:.2f} cm", (text_center[0] - 60, text_center[1] - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-    cv2.putText(output_image, f"Min: {min_diam_cm:.2f} cm", (text_center[0] - 60, text_center[1] + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+    draw_measurement_labels(
+        output_image,
+        text_center,
+        f"Max: {max_diam_cm:.2f} cm",
+        f"Min: {min_diam_cm:.2f} cm",
+        plate_radius=plate_r,
+    )
 
     y_start, y_end = max(0, plate_y - plate_r), min(output_image.shape[0], plate_y + plate_r)
     x_start, x_end = max(0, plate_x - plate_r), min(output_image.shape[1], plate_x + plate_r)
@@ -370,8 +397,13 @@ def analyze_agar_plate(
     print(f"  - SUCCESS: Max Diameter: {max_diam_cm:.2f} cm, Min Diameter: {min_diam_cm:.2f} cm")
 
     text_center = (int(center_ellipse[0]), int(center_ellipse[1]))
-    cv2.putText(output_image, f"Max: {max_diam_cm:.2f} cm", (text_center[0] - 50, text_center[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-    cv2.putText(output_image, f"Min: {min_diam_cm:.2f} cm", (text_center[0] - 50, text_center[1] + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+    draw_measurement_labels(
+        output_image,
+        text_center,
+        f"Max: {max_diam_cm:.2f} cm",
+        f"Min: {min_diam_cm:.2f} cm",
+        plate_radius=plate_r,
+    )
 
     y_start, y_end = max(0, plate_y - plate_r), min(output_image.shape[0], plate_y + plate_r)
     x_start, x_end = max(0, plate_x - plate_r), min(output_image.shape[1], plate_x + plate_r)

@@ -558,11 +558,13 @@ def process_image(
 
     text = f"Colony Count: {colony_count}" if not too_many_to_count else f"Too many to count (>{TOO_MANY_TO_COUNT_LIMIT})"
     font = cv2.FONT_HERSHEY_SIMPLEX
-    font_scale = 1
-    font_thickness = 2
+    min_dim = max(1, min(output_image.shape[:2]))
+    font_scale = max(0.45, min(2.4, min_dim / 900.0))
+    font_thickness = max(1, int(round(font_scale * 2)))
+    margin = max(12, int(round(min_dim * 0.02)))
     text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
-    text_x = max(20, output_image.shape[1] - text_size[0] - 20)
-    text_y = output_image.shape[0] - 20
+    text_x = max(margin, output_image.shape[1] - text_size[0] - margin)
+    text_y = output_image.shape[0] - margin
     cv2.putText(output_image, text, (text_x, text_y), font, font_scale, (255, 255, 255), font_thickness)
 
     # Step 7: Save the annotated image
