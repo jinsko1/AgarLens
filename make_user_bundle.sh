@@ -4,48 +4,77 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 STAMP="$(date +%Y%m%d-%H%M%S)"
-BUNDLE_ROOT="$PWD/dist/AgarLens_User_Bundle_$STAMP"
-ZIP_PATH="$PWD/dist/AgarLens_User_Bundle_$STAMP.zip"
+DIST_DIR="$PWD/dist"
+mkdir -p "$DIST_DIR"
 
-mkdir -p "$BUNDLE_ROOT"
-mkdir -p "$BUNDLE_ROOT/runs/detect/train-5/weights"
+COMMON_ITEMS=(
+  "README.md"
+  "LICENSE"
+  "requirements.txt"
+  "growth_analyzer_gui.py"
+  "analysis_worker.py"
+  "analyze_plates.py"
+  "count_colonies.py"
+  "count_colonies_yolo.py"
+  "azure.tcl"
+  "theme"
+  "Sample Colonies Images"
+  "images"
+)
 
 copy_item() {
   local item="$1"
+  local bundle_root="$2"
   if [[ -e "$item" ]]; then
-    cp -R "$item" "$BUNDLE_ROOT/"
+    cp -R "$item" "$bundle_root/"
   fi
 }
 
-copy_item "README.md"
-copy_item "LICENSE"
-copy_item "requirements.txt"
-copy_item "growth_analyzer_gui.py"
-copy_item "analysis_worker.py"
-copy_item "analyze_plates.py"
-copy_item "count_colonies.py"
-copy_item "count_colonies_yolo.py"
-copy_item "setup_mac.command"
-copy_item "run_growth_analyzer.command"
-copy_item "run_agarlens.sh"
-copy_item "run_agarlens.bat"
-copy_item "azure.tcl"
-copy_item "theme"
-copy_item "Sample Colonies Images"
-copy_item "images"
+copy_model() {
+  local bundle_root="$1"
+  mkdir -p "$bundle_root/runs/detect/train-5/weights"
+  if [[ -f "runs/detect/train-5/weights/best.pt" ]]; then
+    cp "runs/detect/train-5/weights/best.pt" "$bundle_root/runs/detect/train-5/weights/best.pt"
+  else
+    echo "Warning: YOLO model missing at runs/detect/train-5/weights/best.pt"
+  fi
+}
 
-if [[ -f "runs/detect/train-5/weights/best.pt" ]]; then
-  cp "runs/detect/train-5/weights/best.pt" "$BUNDLE_ROOT/runs/detect/train-5/weights/best.pt"
-else
-  echo "Warning: YOLO model missing at runs/detect/train-5/weights/best.pt"
-fi
+zip_bundle() {
+  local bundle_root="$1"
+  local zip_path="$2"
+  (
+    cd "$DIST_DIR"
+    zip -r -X "$zip_path" "$(basename "$bundle_root")" -x "*/.DS_Store"
+  )
+  echo "Created:"
+  echo "$zip_path"
+}
 
-chmod +x "$BUNDLE_ROOT/setup_mac.command" "$BUNDLE_ROOT/run_growth_analyzer.command" "$BUNDLE_ROOT/run_agarlens.sh" 2>/dev/null || true
+create_bundle() {
+  local platform="$1"
+  shift
+  local bundle_root="$DIST_DIR/AgarLens_${platform}_$STAMP"
+  local zip_path="$DIST_DIR/AgarLens_${platform}_$STAMP.zip"
 
-(
-  cd "$PWD/dist"
-  zip -r -X "$ZIP_PATH" "$(basename "$BUNDLE_ROOT")" -x "*/.DS_Store"
-)
+  mkdir -p "$bundle_root"
+  for item in "${COMMON_ITEMS[@]}"; do
+    copy_item "$item" "$bundle_root"
+  done
+  for item in "$@"; do
+    copy_item "$item" "$bundle_root"
+  done
+  copy_model "$bundle_root"
 
-echo "Created:"
-echo "$ZIP_PATH"
+  chmod +x "$bundle_root/"*.command "$bundle_root/"*.sh 2>/dev/null || true
+  zip_bundle "$bundle_root" "$zip_path"
+}
+
+create_bundle "macOS" \
+  "setup_mac.command" \
+  "run_growth_analyzer.command" \
+  "run_agarlens.sh"
+
+create_bundle "Windows" \
+  "setup_windows.bat" \
+  "run_agarlens.bat"

@@ -1,125 +1,215 @@
 # AgarLens
 
-AgarLens is a local desktop app for agar plate image analysis. It currently includes:
+AgarLens is a local desktop app for analyzing agar plate images. It currently includes two workflows:
 
-- Swim Diameter Analyzer
-- Colony Counter powered by a trained YOLO model
+- **Swim Diameter Analyzer**: measures growth diameter and area from scanned agar plate images.
+- **Colony Counter**: counts bacterial colonies with a trained YOLO model while rejecting detections outside the Petri dish.
 
-The app is written in Python/Tkinter and is intended to run locally, without a browser.
+The app runs locally with a Tkinter interface. It does not require a browser or internet connection after setup.
 
-## Project Files
+## What The App Does
 
-- `growth_analyzer_gui.py`: main desktop app
-- `analysis_worker.py`: subprocess runner for swim diameter analysis
-- `analyze_plates.py`: swim diameter backend
-- `count_colonies_yolo.py`: YOLO colony-counting backend
-- `count_colonies.py`: legacy OpenCV colony-counting backend kept for comparison
-- `setup_mac.command`: one-time macOS setup for lab computers
-- `run_growth_analyzer.command`: macOS double-click launcher
-- `run_agarlens.sh`: macOS/Linux terminal launcher
-- `run_agarlens.bat`: Windows launcher
+### Swim Diameter Analyzer
 
-## Required Model
+The swim diameter tool detects the plate, identifies the growth region, measures the maximum and minimum diameter, estimates growth area, and saves:
 
-The colony counter expects the trained YOLO model at:
+- annotated plate images
+- `growth_analysis_results.csv`
+
+The user can manually adjust the measured ellipse when the automatic measurement needs correction.
+
+### Colony Counter
+
+The colony counter uses a trained YOLO model at:
 
 ```text
 runs/detect/train-5/weights/best.pt
 ```
 
-You can also keep the model somewhere else and set:
+The backend first detects the Petri dish, masks out everything outside the plate, runs YOLO on the masked plate image, rejects detections outside the valid plate region, and saves:
 
-```bash
-export AGARLENS_MODEL_PATH="/path/to/best.pt"
+- annotated colony images
+- `colony_counts.csv`
+
+Plates with more than 300 colonies are reported as:
+
+```text
+Too many to count (>300)
 ```
 
-On Windows:
+## Recommended Installation
 
-```bat
-set AGARLENS_MODEL_PATH=C:\path\to\best.pt
+For normal users, use the files from the GitHub **Releases** page, not the green "Code" button.
+
+Download the release file for your operating system:
+
+```text
+AgarLens_macOS_*.zip       macOS
+AgarLens_Windows_*.zip     Windows
 ```
 
-## Setup
+GitHub also shows "Source code ZIP/TAR" automatically. Those are not the normal app downloads.
 
-Use Python 3.10 or newer when possible.
+## macOS Setup
 
-For a Mac lab computer, the easiest path is to double-click:
+1. Download `AgarLens_macOS_*.zip` from the latest GitHub Release.
+2. Unzip it.
+3. Double-click:
 
 ```text
 setup_mac.command
 ```
 
-That creates the local `venv` and installs the required packages once. After setup, users should launch the app with `run_growth_analyzer.command`.
+4. Wait for setup to finish. It creates a local `venv` and installs the required Python packages.
+5. Launch AgarLens by double-clicking:
 
-Manual macOS/Linux setup:
+```text
+run_growth_analyzer.command
+```
+
+If macOS blocks the command file because it was downloaded from the internet, right-click the file, choose **Open**, then confirm.
+
+## Windows Setup
+
+1. Download `AgarLens_Windows_*.zip` from the latest GitHub Release.
+2. Unzip it.
+3. Double-click:
+
+```text
+setup_windows.bat
+```
+
+4. Wait for setup to finish. It creates a local `venv` and installs the required Python packages.
+5. Launch AgarLens by double-clicking:
+
+```text
+run_agarlens.bat
+```
+
+## Manual Setup From Source
+
+Use this path if you are developing the app or running directly from the repository.
+
+Python 3.10 or newer is recommended.
+
+macOS/Linux:
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+python growth_analyzer_gui.py
 ```
 
-On Windows:
+Windows:
 
 ```bat
 python -m venv venv
 venv\Scripts\activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+python growth_analyzer_gui.py
 ```
 
-## Run
+## How To Use
 
-macOS double-click:
+1. Open AgarLens.
+2. Choose either **Swim Diameter Program** or **Colony Counter Program**.
+3. Add individual images or add a folder of images.
+4. Choose an output folder if you do not want to use the default output folder.
+5. Run the batch analysis/count.
+6. Review the annotated images and CSV output in the results folder.
+
+For the swim diameter workflow, you can manually adjust the measurement ellipse if the automatic result is not satisfactory.
+
+For the colony counter workflow, the trained YOLO model handles detection automatically. The app crops annotated outputs around the plate and stops counting once a plate is confirmed to have more than 300 colonies.
+
+## Project Files
+
+- `growth_analyzer_gui.py`: main desktop app and user interface
+- `analysis_worker.py`: subprocess runner for swim diameter analysis
+- `analyze_plates.py`: swim diameter backend
+- `count_colonies_yolo.py`: YOLO colony-counting backend
+- `count_colonies.py`: legacy OpenCV colony-counting backend kept for comparison
+- `requirements.txt`: Python dependencies
+- `setup_mac.command`: one-time macOS setup script
+- `setup_windows.bat`: one-time Windows setup script
+- `run_growth_analyzer.command`: macOS launcher
+- `run_agarlens.sh`: macOS/Linux terminal launcher
+- `run_agarlens.bat`: Windows launcher
+- `make_user_bundle.sh`: creates platform-specific release ZIP files
+- `build_mac_app.sh`: experimental macOS `.app` build script for release maintainers
+
+## YOLO Model Location
+
+By default, the colony counter expects:
 
 ```text
-run_growth_analyzer.command
+runs/detect/train-5/weights/best.pt
 ```
 
-macOS/Linux terminal:
+If the model is somewhere else, set `AGARLENS_MODEL_PATH`.
+
+macOS/Linux:
 
 ```bash
-./run_agarlens.sh
+export AGARLENS_MODEL_PATH="/path/to/best.pt"
 ```
 
 Windows:
 
 ```bat
-run_agarlens.bat
+set AGARLENS_MODEL_PATH=C:\path\to\best.pt
 ```
 
-Direct Python:
+## Making GitHub Release ZIPs
+
+Maintainers can create platform-specific release bundles with:
 
 ```bash
-python growth_analyzer_gui.py
+./make_user_bundle.sh
 ```
 
-## Build A Mac App
-
-This is only for making a release bundle. Normal users should not do this.
-
-After setup, install PyInstaller and run the build script:
-
-```bash
-source venv/bin/activate
-python -m pip install pyinstaller
-./build_mac_app.sh
-```
-
-The app bundle is created at:
+This creates files in `dist/` like:
 
 ```text
-dist/AgarLens.app
+AgarLens_macOS_YYYYMMDD-HHMMSS.zip
+AgarLens_Windows_YYYYMMDD-HHMMSS.zip
 ```
 
-The bundled app is large because it includes Python, OpenCV, Torch, Ultralytics, and the YOLO model. On this machine the first build was about 750 MB. For sharing outside your own Mac, the app may still need proper Apple Developer signing/notarization.
+Upload those ZIP files to the GitHub Releases page.
 
-## Notes For Sharing
+## Building A Standalone Mac App
 
-- For other lab Macs, share the project folder, include `best.pt`, run `setup_mac.command` once, then use `run_growth_analyzer.command`.
-- For public distribution, build the app once and upload `AgarLens.app` as a GitHub Release. Do not ask users to run PyInstaller.
-- Keep generated outputs out of Git.
-- Include the YOLO `best.pt` model separately unless you deliberately want it tracked.
-- The launchers use the Python interpreter from the local virtual environment when available.
-- Output folders, logs, model artifacts, and caches are ignored by `.gitignore`.
+`build_mac_app.sh` is only for release maintainers experimenting with a full `.app` bundle. Normal users should not run it.
+
+The standalone bundle is large because it includes Python, OpenCV, Torch, Ultralytics, and the YOLO model. On this project, early builds were roughly 750 MB and may require proper Apple Developer signing/notarization for public distribution.
+
+## Troubleshooting
+
+### The colony counter takes a while on the first image
+
+The YOLO model and Torch backend have to load the first time colony counting runs. The app warms the model in the background when the colony counter page opens, but the first count can still take longer than later counts.
+
+### The colony counter says the model is missing
+
+Make sure `best.pt` exists at:
+
+```text
+runs/detect/train-5/weights/best.pt
+```
+
+or set `AGARLENS_MODEL_PATH`.
+
+### The setup script cannot find Python
+
+Install Python 3.10 or newer, then run the setup script again.
+
+### macOS will not open a `.command` file
+
+Right-click the file, choose **Open**, then confirm. This is a standard macOS security step for downloaded scripts.
+
+## Development Notes
+
+Generated outputs, virtual environments, model artifacts, logs, and packaged release files are ignored by Git. Keep trained model files and release ZIPs out of normal commits unless you intentionally want to publish them as release assets.
