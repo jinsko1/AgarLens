@@ -11,7 +11,7 @@ import numpy as np
 import count_colonies as legacy_count_colonies
 
 
-PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 os.environ.setdefault("YOLO_AUTOINSTALL", "false")
 DEFAULT_MODEL_PATH = os.path.join(PROJECT_DIR, "runs", "detect", "train-5", "weights", "best.pt")
 MODEL_PATH = os.path.abspath(
@@ -22,6 +22,7 @@ MODEL_PATH = os.path.abspath(
 IMG_SIZE = 1024
 DEFAULT_IOU = 0.50
 DEFAULT_MAX_DET = 1000
+DEFAULT_CONFIDENCE = 0.10
 INNER_PLATE_FRACTION = 0.97
 MIN_BOX_FRACTION_INSIDE_PLATE = 0.50
 TOO_MANY_TO_COUNT_LIMIT = legacy_count_colonies.TOO_MANY_TO_COUNT_LIMIT
@@ -107,12 +108,6 @@ def warmup_model():
         "device": device,
         "seconds": time.perf_counter() - start_time,
     }
-
-
-def sensitivity_to_confidence(sensitivity):
-    value = min(100.0, max(0.0, float(sensitivity)))
-    conf = 0.35 - (value / 100.0) * 0.25
-    return max(0.05, min(0.35, conf))
 
 
 def clamp_box(box, width, height):
@@ -226,14 +221,6 @@ def crop_around_plate(image, plate_x, plate_y, plate_r, margin_fraction=0.08):
 def process_image(
     image_path,
     output_dir,
-    binary_threshold=30,
-    erosion_iterations=0,
-    min_solidity=0.9,
-    min_colony_area=15,
-    max_colony_area=4000,
-    sensitivity=50,
-    colony_size="Medium",
-    split_touching=True,
     output_filename=None,
     return_details=False,
     save_diagnostics=False,
@@ -269,7 +256,7 @@ def process_image(
     masked_image = original_image.copy()
     masked_image[allowed_plate_mask == 0] = 0
 
-    conf = sensitivity_to_confidence(sensitivity)
+    conf = DEFAULT_CONFIDENCE
     try:
         load_start = time.perf_counter()
         model = get_model()
@@ -410,18 +397,8 @@ def process_image(
             "Plate_Radius_px": int(plate_r),
             "Inner_Radius_px": int(inner_radius),
             "Detected_Colonies": detected_colonies,
-            "Detection_Sensitivity": sensitivity,
-            "Colony_Size": colony_size,
-            "Split_Touching": bool(split_touching),
             "Detected_Polarity": "YOLO masked plate",
-            "Auto_Threshold": float(round(conf, 4)),
-            "Threshold_Sweep": "",
-            "Accepted_Threshold_Components": raw_colony_count,
-            "Binary_Threshold": binary_threshold,
-            "Erosion_Iterations": erosion_iterations,
-            "Min_Solidity": min_solidity,
-            "Min_Colony_Area": min_colony_area,
-            "Max_Colony_Area": max_colony_area,
+            "YOLO_Confidence": float(round(conf, 4)),
             "Diagnostics_Path": diagnostics_path,
             "Colonies_Debug_CSV": colonies_debug_csv_path,
         }

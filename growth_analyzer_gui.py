@@ -26,15 +26,17 @@ ImageTk = None
 APP_TITLE = "AgarLens"
 SWIM_TITLE = "Swim Diameter Analyzer"
 COLONY_TITLE = "Colony Counter"
-PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+IS_FROZEN = bool(getattr(sys, "frozen", False))
+PROJECT_DIR = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+USER_DATA_DIR = os.path.join(os.path.expanduser("~/Documents"), APP_TITLE) if IS_FROZEN else PROJECT_DIR
 WORKER_PATH = os.path.join(PROJECT_DIR, "analysis_worker.py")
-OUTPUT_DIR = os.path.join(PROJECT_DIR, "output")
+OUTPUT_DIR = os.path.join(USER_DATA_DIR, "output")
 PREVIEW_DIR = os.path.join(OUTPUT_DIR, "live_preview")
-COLONY_OUTPUT_DIR = os.path.join(PROJECT_DIR, "colony_output")
+COLONY_OUTPUT_DIR = os.path.join(USER_DATA_DIR, "colony_output")
 COLONY_PREVIEW_DIR = os.path.join(COLONY_OUTPUT_DIR, "live_preview")
 SUPPORTED_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp")
 PREVIEW_DEBOUNCE_MS = 900
-STARTUP_LOG_PATH = os.path.join(PROJECT_DIR, "gui_startup.log")
+STARTUP_LOG_PATH = os.path.join(USER_DATA_DIR, "gui_startup.log")
 COLONY_TOO_MANY_TO_COUNT_LIMIT = 300
 PREVIEW_CACHE_LIMIT = 256
 _colony_backend = None
@@ -49,10 +51,6 @@ SETTING_HELP = {
     "Minimum solidity": "How round and filled-in a colony candidate must be. Higher values reject irregular scratches or artifacts.",
     "Minimum colony area": "Smallest spot, in pixels, that can count as a colony. Raise this to ignore tiny specks.",
     "Maximum colony area": "Largest spot, in pixels, that can count as one colony. Lower this to reject large blobs or plate artifacts.",
-    "Colony detection sensitivity": "Controls how readily the app accepts faint colonies after correcting each plate's background. Move left to avoid noise. Move right to catch fainter colonies.",
-    "Colony size": "Choose the expected colony size range. Mixed is the broadest option and is useful when colonies vary a lot.",
-    "Split touching colonies": "When on, the app tries to separate colonies that are touching each other before counting.",
-    "Save diagnostics": "Saves intermediate images for each colony-count batch result so you can see plate masking, thresholding, components, local maxima, and final overlay.",
 }
 
 DEFAULTS = {
@@ -62,15 +60,12 @@ DEFAULTS = {
 }
 
 COLONY_DEFAULTS = {
-    "sensitivity": 50.0,
-    "colony_size": "Medium",
-    "split_touching": True,
-    "save_diagnostics": False,
     "preview_contrast": 1.0,
 }
 
 
 def log_startup(message):
+    os.makedirs(os.path.dirname(STARTUP_LOG_PATH), exist_ok=True)
     with open(STARTUP_LOG_PATH, "a", encoding="utf-8") as log_file:
         log_file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')}  {message}\n")
 
@@ -647,11 +642,6 @@ class GrowthAnalyzerGUI:
             return
         if not self.image_paths:
             messagebox.showinfo("No Images", "Add images or a folder first.")
-            return
-        try:
-            settings = self.settings()
-        except (tk.TclError, ValueError):
-            messagebox.showerror("Invalid Settings", "One or more settings is blank or invalid. Please enter a valid number.")
             return
         os.makedirs(self.output_dir_var.get(), exist_ok=True)
         self.progress["maximum"] = len(self.image_paths)
@@ -1354,15 +1344,12 @@ class ColonyCounterGUI:
         self.event_queue = queue.Queue()
         self.closed = False
         self.batch_thread = None
-        self.preview_thread = None
         self.model_warmup_thread = None
         self.model_ready = False
         self.model_warmup_started = False
-        self.preview_after_id = None
         self.preview_preload_after_id = None
         self.preview_preload_queue = []
         self.preview_generation = 0
-        self.preview_pending = False
         self.preview_path = None
         self.preview_display_path = None
         self.preview_photo = None
@@ -1374,10 +1361,6 @@ class ColonyCounterGUI:
         self.preview_cache_order = []
 
         self.output_dir_var = tk.StringVar(value=COLONY_OUTPUT_DIR)
-        self.sensitivity_var = tk.DoubleVar(value=COLONY_DEFAULTS["sensitivity"])
-        self.colony_size_var = tk.StringVar(value=COLONY_DEFAULTS["colony_size"])
-        self.split_touching_var = tk.BooleanVar(value=COLONY_DEFAULTS["split_touching"])
-        self.save_diagnostics_var = tk.BooleanVar(value=COLONY_DEFAULTS["save_diagnostics"])
         self.preview_contrast_var = tk.DoubleVar(value=COLONY_DEFAULTS["preview_contrast"])
         self.preview_contrast_rounding = False
 
@@ -1457,68 +1440,19 @@ class ColonyCounterGUI:
         ttk.Button(output, text="Browse", command=self.choose_output_dir).grid(row=0, column=1)
         ttk.Button(output, text="Show Results Folder", command=self.open_output_dir).grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
 
+        preview_settings = ttk.LabelFrame(parent, text="Preview", padding=12)
+        preview_settings.grid(row=6, column=0, sticky="ew", pady=(0, 14))
+        preview_settings.columnconfigure(0, weight=1)
+        self._preview_contrast(preview_settings, 0)
+
         self.run_button = ttk.Button(parent, text="Run Batch Count", command=self.start_batch_analysis, style="Accent.TButton")
-        self.run_button.grid(row=6, column=0, sticky="ew", pady=(18, 8), ipady=4)
+        self.run_button.grid(row=7, column=0, sticky="ew", pady=(18, 8), ipady=4)
         self.undo_colony_button = ttk.Button(parent, text="Undo Colony Edit", command=self.undo_colony_edit, state="disabled")
-        self.undo_colony_button.grid(row=7, column=0, sticky="ew", pady=(0, 8))
+        self.undo_colony_button.grid(row=8, column=0, sticky="ew", pady=(0, 8))
         self.progress = ttk.Progressbar(parent, mode="determinate")
-        self.progress.grid(row=8, column=0, sticky="ew", pady=(16, 6))
+        self.progress.grid(row=9, column=0, sticky="ew", pady=(16, 6))
         self.status_label = ttk.Label(parent, text="", wraplength=300)
-        self.status_label.grid(row=9, column=0, sticky="ew")
-
-    def _spin(self, parent, row, label, variable, from_, to, increment):
-        ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=(0, 4))
-        InfoButton(parent, SETTING_HELP.get(label, "This setting changes how colony detection is processed.")).grid(row=row, column=1, sticky="e", padx=(8, 0), pady=(0, 4))
-        ttk.Spinbox(parent, textvariable=variable, from_=from_, to=to, increment=increment).grid(row=row + 1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
-
-    def _colony_sensitivity(self, parent, row):
-        self.sensitivity_label_var = tk.StringVar()
-
-        def update_label(*_):
-            value = self.sensitivity_var.get()
-            if value < 25:
-                zone = "Conservative"
-            elif value > 75:
-                zone = "Sensitive"
-            else:
-                zone = "Balanced"
-            self.sensitivity_label_var.set(f"Detection sensitivity: {zone}")
-
-        self.sensitivity_var.trace_add("write", update_label)
-        update_label()
-        ttk.Label(parent, textvariable=self.sensitivity_label_var).grid(row=row, column=0, sticky="w", pady=(0, 4))
-        InfoButton(parent, SETTING_HELP["Colony detection sensitivity"]).grid(row=row, column=1, sticky="e", padx=(8, 0), pady=(0, 4))
-        sensitivity = ttk.Scale(parent, variable=self.sensitivity_var, from_=0, to=100)
-        self.bind_scale_click_to_value(sensitivity, self.sensitivity_var, 0, 100)
-        sensitivity.grid(row=row + 1, column=0, columnspan=2, sticky="ew", pady=(0, 2))
-        axis = ttk.Frame(parent)
-        axis.grid(row=row + 2, column=0, columnspan=2, sticky="ew", pady=(0, 10))
-        axis.columnconfigure(0, weight=1)
-        axis.columnconfigure(1, weight=1)
-        axis.columnconfigure(2, weight=1)
-        ttk.Label(axis, text="Conservative").grid(row=0, column=0, sticky="w")
-        ttk.Label(axis, text="Balanced").grid(row=0, column=1)
-        ttk.Label(axis, text="Sensitive").grid(row=0, column=2, sticky="e")
-
-    def _colony_size(self, parent, row):
-        ttk.Label(parent, text="Colony size").grid(row=row, column=0, sticky="w", pady=(0, 4))
-        InfoButton(parent, SETTING_HELP["Colony size"]).grid(row=row, column=1, sticky="e", padx=(8, 0), pady=(0, 4))
-        size_menu = ttk.Combobox(parent, textvariable=self.colony_size_var, state="readonly", values=("Small", "Medium", "Large", "Mixed"))
-        size_menu.grid(row=row + 1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
-
-    def _split_touching(self, parent, row):
-        row_frame = ttk.Frame(parent)
-        row_frame.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(0, 8))
-        row_frame.columnconfigure(0, weight=1)
-        ttk.Checkbutton(row_frame, text="Split touching colonies", variable=self.split_touching_var).grid(row=0, column=0, sticky="w")
-        InfoButton(row_frame, SETTING_HELP["Split touching colonies"]).grid(row=0, column=1, sticky="e")
-
-    def _save_diagnostics(self, parent, row):
-        row_frame = ttk.Frame(parent)
-        row_frame.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(0, 10))
-        row_frame.columnconfigure(0, weight=1)
-        ttk.Checkbutton(row_frame, text="Save diagnostic images", variable=self.save_diagnostics_var).grid(row=0, column=0, sticky="w")
-        InfoButton(row_frame, SETTING_HELP["Save diagnostics"]).grid(row=0, column=1, sticky="e")
+        self.status_label.grid(row=10, column=0, sticky="ew")
 
     def _preview_contrast(self, parent, row):
         self.preview_contrast_label_var = tk.StringVar()
@@ -1672,20 +1606,16 @@ class ColonyCounterGUI:
             messagebox.showerror("Invalid Settings", "One or more settings is blank or invalid. Please enter a valid number.")
             return
         os.makedirs(self.output_dir_var.get(), exist_ok=True)
-        if self.preview_after_id:
-            self.root.after_cancel(self.preview_after_id)
-            self.preview_after_id = None
-        self.preview_pending = False
         self.preview_generation += 1
         self.preview_status.config(text="")
         self.progress["maximum"] = len(self.image_paths)
         self.progress["value"] = 0
         self.run_button.state(["disabled"])
         self.undo_colony_button.state(["disabled"])
-        self.batch_thread = threading.Thread(target=self._batch_worker, args=(settings,), daemon=True)
+        self.batch_thread = threading.Thread(target=self._batch_worker, daemon=True)
         self.batch_thread.start()
 
-    def _batch_worker(self, settings):
+    def _batch_worker(self):
         if not self.model_ready:
             self.event_queue.put(("batch_message", "Preparing YOLO model before counting."))
             try:
@@ -1697,7 +1627,7 @@ class ColonyCounterGUI:
             self.model_ready = True
         for index, image_path in enumerate(self.image_paths):
             self.event_queue.put(("status", index, "Running"))
-            result = self._count_path(index, image_path, settings, self.output_dir_var.get(), colony_output_filename_for(image_path), save_diagnostics=settings["save_diagnostics"])
+            result = self._count_path(image_path, self.output_dir_var.get(), colony_output_filename_for(image_path))
             if result:
                 result["Source_Path"] = image_path
                 result["Status"] = "Too Many To Count" if result.get("Too_Many_To_Count") else "Success"
@@ -1730,20 +1660,14 @@ class ColonyCounterGUI:
         log_startup(f"Colony YOLO model warmup finished in {seconds:.3f}s on {device}")
         self.event_queue.put(("model_ready", seconds, device))
 
-    def _count_path(self, index, image_path, settings, output_dir, output_filename, save_diagnostics=False):
+    def _count_path(self, image_path, output_dir, output_filename):
         os.makedirs(output_dir, exist_ok=True)
-        diagnostic_dir = os.path.join(output_dir, "diagnostics", os.path.splitext(os.path.basename(image_path))[0])
         colony_backend = get_colony_backend()
         return colony_backend.process_image(
             image_path,
             output_dir,
-            sensitivity=settings["sensitivity"],
-            colony_size=settings["colony_size"],
-            split_touching=settings["split_touching"],
             output_filename=output_filename,
             return_details=True,
-            save_diagnostics=save_diagnostics,
-            diagnostic_dir=diagnostic_dir,
         )
 
     def _drain_event_queue(self):
@@ -1796,21 +1720,6 @@ class ColonyCounterGUI:
                 "Select an analyzed image, click a red dot to remove it, or click open space to add a colony."
             )
             self.start_preview_preload()
-        elif kind == "preview_result":
-            _, generation, result = event
-            if generation == self.preview_generation:
-                if result:
-                    self.apply_preview_result(result)
-                else:
-                    self.preview_result.config(text="Preview failed. Check plate detection or colony settings.")
-        elif kind == "preview_done":
-            _, generation = event
-            if generation == self.preview_generation:
-                self.preview_thread = None
-                self.preview_status.config(text="")
-                if self.preview_pending:
-                    self.preview_pending = False
-                    self.schedule_live_preview(delay=250)
 
     def update_row(self, index, status=None, count=""):
         item_id = str(index)
@@ -1845,12 +1754,6 @@ class ColonyCounterGUI:
         self.update_colony_undo_button()
 
     def _bind_preview_traces(self):
-        for variable in (
-            self.sensitivity_var,
-            self.colony_size_var,
-            self.split_touching_var,
-        ):
-            variable.trace_add("write", lambda *_: self.schedule_live_preview())
         self.preview_contrast_var.trace_add("write", self.on_preview_contrast_changed)
 
     def on_preview_contrast_changed(self, *_):
@@ -1866,43 +1769,6 @@ class ColonyCounterGUI:
             self.preview_contrast_var.set(rounded_value)
             self.preview_contrast_rounding = False
         self.refresh_preview_display()
-
-    def schedule_live_preview(self, delay=PREVIEW_DEBOUNCE_MS):
-        if not self.preview_path:
-            return
-        if self.preview_after_id:
-            self.root.after_cancel(self.preview_after_id)
-        self.preview_after_id = self.root.after(delay, self.start_live_preview)
-
-    def start_live_preview(self):
-        self.preview_after_id = None
-        if not self.preview_path:
-            return
-        if self.preview_thread and self.preview_thread.is_alive():
-            self.preview_pending = True
-            self.preview_status.config(text="Queued")
-            return
-        try:
-            settings = self.settings()
-        except (tk.TclError, ValueError):
-            self._set_status("Live preview paused until all settings contain valid numbers.")
-            return
-        os.makedirs(COLONY_PREVIEW_DIR, exist_ok=True)
-        self.preview_generation += 1
-        generation = self.preview_generation
-        image_path = self.preview_path
-        self.preview_status.config(text="Updating...")
-        self.preview_thread = threading.Thread(target=self._preview_worker, args=(generation, image_path, settings), daemon=True)
-        self.preview_thread.start()
-
-    def _preview_worker(self, generation, image_path, settings):
-        output_filename = colony_preview_filename_for(image_path)
-        result = self._count_path(0, image_path, settings, COLONY_PREVIEW_DIR, output_filename)
-        if result:
-            result["Source_Path"] = image_path
-            result["Status"] = "Preview"
-        self.event_queue.put(("preview_result", generation, result))
-        self.event_queue.put(("preview_done", generation))
 
     def apply_preview_result(self, result):
         self.current_preview_result = result
@@ -2061,7 +1927,6 @@ class ColonyCounterGUI:
             "Raw_Colony_Count": count,
             "Too_Many_To_Count": False,
             "Count_Stopped_Early": False,
-            "Accepted_Threshold_Components": count,
             "Manual_Adjustment": True,
             "Manual_Original_Count": original_count,
             "Detected_Colonies": colonies,
@@ -2162,14 +2027,6 @@ class ColonyCounterGUI:
         self.update_colony_undo_button()
         self._set_status("Manual colony edit undone for the selected image.")
 
-    def settings(self):
-        return {
-            "sensitivity": float(self.sensitivity_var.get()),
-            "colony_size": self.colony_size_var.get(),
-            "split_touching": bool(self.split_touching_var.get()),
-            "save_diagnostics": bool(self.save_diagnostics_var.get()),
-        }
-
     def format_colony_count(self, result):
         if result.get("Too_Many_To_Count"):
             limit = result.get("Too_Many_To_Count_Limit", COLONY_TOO_MANY_TO_COUNT_LIMIT)
@@ -2189,9 +2046,6 @@ class ColonyCounterGUI:
             messagebox.showinfo("Counting Running", "Wait for the current batch to finish before returning to the title page.")
             return
         self.closed = True
-        if self.preview_after_id:
-            self.root.after_cancel(self.preview_after_id)
-            self.preview_after_id = None
         if self.preview_preload_after_id:
             self.root.after_cancel(self.preview_preload_after_id)
             self.preview_preload_after_id = None
@@ -2214,6 +2068,22 @@ def find_image_paths(folder):
 
 
 def run_analysis(image_path, output_dir, output_filename, settings):
+    if IS_FROZEN:
+        import analyze_plates as analyzer
+
+        result = analyzer.auto_analyze_agar_plate(
+            image_path,
+            output_dir,
+            plate_diameter_cm=settings["plate_diameter_cm"],
+            sensitivity=settings["sensitivity"],
+            output_filename=output_filename,
+        )
+        return {
+            "ok": bool(result),
+            "result": result,
+            "error": "" if result else "Analysis failed. Check plate detection or threshold settings.",
+        }
+
     command = [
         ANALYSIS_PYTHON,
         WORKER_PATH,
@@ -2290,18 +2160,8 @@ def write_colony_csv(path, rows):
         "Too_Many_To_Count",
         "Too_Many_To_Count_Limit",
         "Count_Stopped_Early",
-        "Detection_Sensitivity",
-        "Colony_Size",
-        "Split_Touching",
         "Detected_Polarity",
-        "Auto_Threshold",
-        "Threshold_Sweep",
-        "Accepted_Threshold_Components",
-        "Binary_Threshold",
-        "Erosion_Iterations",
-        "Min_Solidity",
-        "Min_Colony_Area",
-        "Max_Colony_Area",
+        "YOLO_Confidence",
         "Diagnostics_Path",
         "Colonies_Debug_CSV",
         "Output_Path",

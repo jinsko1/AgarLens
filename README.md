@@ -141,6 +141,7 @@ After a colony batch count finishes, select an analyzed image to correct the cou
 - `run_agarlens.sh`: macOS/Linux terminal launcher
 - `run_agarlens.bat`: Windows launcher
 - `make_user_bundle.sh`: creates platform-specific release ZIP files
+- `build_launcher_app.sh`: creates a local clickable macOS launcher app
 
 ## YOLO Model Location
 
@@ -180,6 +181,23 @@ AgarLens_Windows_YYYYMMDD-HHMMSS.zip
 ```
 
 Upload those ZIP files to the GitHub Releases page.
+
+## Building A Local macOS App Launcher
+
+For your own Mac, you can create a clickable Dock/Finder app with:
+
+```bash
+./build_launcher_app.sh
+```
+
+This creates:
+
+```text
+dist/AgarLens.app
+dist/AgarLens_Launcher_macOS.zip
+```
+
+This launcher app uses the local project folder and its `venv`. It is much faster and smaller than a fully standalone PyInstaller app, but it is not a self-contained app for other computers by itself. For other users, publish the release ZIPs from `make_user_bundle.sh`.
 
 ## Troubleshooting
 

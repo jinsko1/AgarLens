@@ -71,7 +71,8 @@ create_bundle() {
 create_bundle "macOS" \
   "setup_mac.command" \
   "run_growth_analyzer.command" \
-  "run_agarlens.sh"
+  "run_agarlens.sh" \
+  "build_launcher_app.sh"
 
 create_bundle "Windows" \
   "setup_windows.bat" \
